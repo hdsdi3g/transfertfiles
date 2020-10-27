@@ -14,7 +14,10 @@
 	</Appenders>
 	
 	<Loggers>
-		<Logger name="tv.hd3g" level="info" />
+		<Logger name="tv.hd3g" level="warn" />
+        <Logger name="net.schmizz.sshj.xfer.FileSystemFile" level="error" />
+        <Logger name="net.schmizz.sshj.transport.TransportImpl" level="fatal" />
+        <Logger name="org.apache.ftpserver" level="error" />
 
 		<Root level="warn">
 			<AppenderRef ref="Console OUT" />
