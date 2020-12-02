@@ -19,6 +19,7 @@ package tv.hd3g.transfertfiles;
 import static java.io.File.separator;
 import static java.nio.charset.Charset.defaultCharset;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -38,7 +39,6 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -120,12 +120,42 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		if (isADir == false && isAFile == false) {
 			tests.put("testLastModified",
 			        f -> assertEquals(0, f.lastModified()));
+			tests.put("testToCache",
+			        f -> {
+				        final var c = f.toCache();
+				        assertFalse(c.exists());
+				        assertFalse(c.isDirectory());
+				        assertFalse(c.isFile());
+				        assertFalse(c.isLink());
+				        assertFalse(c.isSpecial());
+				        assertEquals(0, c.lastModified());
+				        assertEquals(0, c.length());
+				        assertEquals(f.getName(), c.getName());
+				        assertEquals(f.getPath(), c.getPath());
+			        });
 		} else {
 			tests.put("testLastModified-notTooYoung",
 			        f -> assertTrue(f.lastModified() < System.currentTimeMillis() + 1_000L));
 			tests.put("testLastModified-notTooOld",
-			        f -> assertTrue(f.lastModified() > System.currentTimeMillis() - 10_000L));
+			        f -> assertTrue(f.lastModified() > System.currentTimeMillis() - 300_000L));
+			tests.put("testToCache", f -> compareCache(f, f.toCache()));
 		}
+	}
+
+	private static void compareCache(final AbstractFile f, final CachedFileAttributes c) {
+		assertEquals(f.toCache(), c);
+		assertEquals(f.exists(), c.exists());
+		assertEquals(f.isDirectory(), c.isDirectory());
+		assertEquals(f.isFile(), c.isFile());
+		assertEquals(f.isLink(), c.isLink());
+		assertEquals(f.isSpecial(), c.isSpecial());
+		assertEquals(f.lastModified(), c.lastModified());
+		if (f.isDirectory() == false) {
+			assertEquals(f.length(), c.length());
+		}
+		assertEquals(f.isHidden(), c.isHidden());
+		assertEquals(f.getName(), c.getName());
+		assertEquals(f.getPath(), c.getPath());
 	}
 
 	@TestFactory
@@ -143,10 +173,18 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		tests.put("testList",
 		        f -> {
 			        final var sf = fs.getFromPath(baseDirName + "/" + baseSubFileName);
-			        final var list = f.list().collect(Collectors.toUnmodifiableList());
+			        final var list = f.list().collect(toUnmodifiableList());
 			        assertEquals(1, list.size());
 			        assertEquals(sf, list.get(0));
 			        assertEquals(subFile.getName(), list.get(0).getName());
+		        });
+		tests.put("testToCachedList",
+		        f -> {
+			        final var list = f.list().collect(toUnmodifiableList());
+			        final var clist = f.toCachedList().collect(toUnmodifiableList());
+			        assertEquals(1, list.size());
+			        assertEquals(1, clist.size());
+			        compareCache(list.get(0), clist.get(0));
 		        });
 		tests.put("testDelete",
 		        f -> {
@@ -224,6 +262,8 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		addRegularTests(tests, fs, false, true, 1);
 		tests.put("testList",
 		        f -> assertEquals(0, f.list().count()));
+		tests.put("testToCachedList",
+		        f -> assertEquals(0, f.toCachedList().count()));
 		tests.put("testDelete", f -> {
 			assertTrue(file.exists());
 			f.delete();
@@ -327,6 +367,8 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		        f -> assertTrue(fs.getFromPath(".dontseeme").isHidden()));
 		tests.put("testList",
 		        f -> assertEquals(0, f.list().count()));
+		tests.put("testToCachedList",
+		        f -> assertEquals(0, f.toCachedList().count()));
 		tests.put("testDelete", f -> {
 			assertThrows(IORuntimeException.class, () -> f.delete());
 		});

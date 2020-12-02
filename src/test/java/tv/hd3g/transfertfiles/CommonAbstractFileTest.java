@@ -191,5 +191,14 @@ class CommonAbstractFileTest {
 			return null;
 		}
 
+		@Override
+		public CachedFileAttributes toCache() {
+			return null;
+		}
+
+		@Override
+		public Stream<CachedFileAttributes> toCachedList() {
+			return null;
+		}
 	}
 }

@@ -77,6 +77,20 @@ public interface AbstractFile {
 	 */
 	AbstractFile renameTo(String path);
 
+	/**
+	 * @return a read-only cached data version of this AbstractFile
+	 */
+	default CachedFileAttributes toCache() {
+		return new CachedFileAttributes(this);
+	}
+
+	/**
+	 * @return a read-only cached list data version of AbstractFile.list
+	 */
+	default Stream<CachedFileAttributes> toCachedList() {
+		return list().map(CachedFileAttributes::new);
+	}
+
 	static String normalizePath(final String path) {
 		Objects.requireNonNull(path, "path can't be null");
 		if (path.equals("") || path.equals("/")) {

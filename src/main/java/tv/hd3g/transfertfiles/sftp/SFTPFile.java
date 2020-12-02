@@ -29,6 +29,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import net.schmizz.sshj.common.StreamCopier.Listener;
+import net.schmizz.sshj.sftp.FileAttributes;
 import net.schmizz.sshj.sftp.FileMode.Type;
 import net.schmizz.sshj.sftp.RemoteResourceInfo;
 import net.schmizz.sshj.sftp.SFTPClient;
@@ -36,6 +37,7 @@ import net.schmizz.sshj.xfer.TransferListener;
 import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.AbstractFile;
 import tv.hd3g.transfertfiles.AbstractFileSystem;
+import tv.hd3g.transfertfiles.CachedFileAttributes;
 import tv.hd3g.transfertfiles.CannotDeleteException;
 import tv.hd3g.transfertfiles.CommonAbstractFile;
 import tv.hd3g.transfertfiles.TransfertObserver;
@@ -156,12 +158,48 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		}
 	}
 
+	private CachedFileAttributes makeCachedFileAttributesFromStat(final AbstractFile related, final FileAttributes f) {
+		return new CachedFileAttributes(related,
+		        f.getSize(), f.getMtime() * 1000L, true,
+		        f.getType() == Type.DIRECTORY,
+		        f.getType() == Type.REGULAR,
+		        f.getType() == Type.SYMLINK,
+		        f.getType() != Type.REGULAR && f.getType() != Type.DIRECTORY && f.getType() != Type.SYMLINK);
+	}
+
+	@Override
+	public CachedFileAttributes toCache() {
+		try {
+			return makeCachedFileAttributesFromStat(this, sftpClient.stat(path));
+		} catch (final IOException e) {
+			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
+				return CachedFileAttributes.notExists(this);
+			}
+			throw new IORuntimeException(e);
+		}
+	}
+
 	@Override
 	public Stream<AbstractFile> list() {
 		try {
 			return sftpClient.ls(path).stream()
 			        .map(RemoteResourceInfo::getPath)
 			        .map(fileSystem::getFromPath);
+		} catch (final IOException e) {
+			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)
+			    || e.getMessage().equals("Accessed location is not a directory")) {
+				return Stream.empty();
+			}
+			throw new IORuntimeException(e);
+		}
+	}
+
+	@Override
+	public Stream<CachedFileAttributes> toCachedList() {
+		try {
+			return sftpClient.ls(path).stream()
+			        .map(rri -> makeCachedFileAttributesFromStat(
+			                fileSystem.getFromPath(rri.getPath()), rri.getAttributes()));
 		} catch (final IOException e) {
 			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)
 			    || e.getMessage().equals("Accessed location is not a directory")) {

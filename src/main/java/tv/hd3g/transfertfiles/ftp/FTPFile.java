@@ -20,6 +20,8 @@ import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.apache.commons.io.FilenameUtils.getFullPathNoEndSeparator;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.DISTANTTOLOCAL;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.LOCALTODISTANT;
+import static tv.hd3g.transfertfiles.ftp.FTPListing.MLSD;
+import static tv.hd3g.transfertfiles.ftp.FTPListing.NLST;
 import static tv.hd3g.transfertfiles.ftp.StoppableOutputStream.MANUALLY_STOP_WRITING;
 
 import java.io.BufferedInputStream;
@@ -45,12 +47,15 @@ import org.apache.logging.log4j.Logger;
 import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.AbstractFile;
 import tv.hd3g.transfertfiles.AbstractFileSystem;
+import tv.hd3g.transfertfiles.CachedFileAttributes;
 import tv.hd3g.transfertfiles.CannotDeleteException;
 import tv.hd3g.transfertfiles.CommonAbstractFile;
 import tv.hd3g.transfertfiles.TransfertObserver;
 import tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection;
 
 public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
+	private static final String FTP_ERROR_DURING_LIST = "FTP error during list \"";
+
 	private static final Logger log = LogManager.getLogger();
 
 	private final FTPClient ftpClient;
@@ -77,8 +82,25 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 				return Optional.ofNullable(ftpClient.mlistFile(path));
 			}
 		} catch (final IOException e) {
-			throw new IORuntimeException("FTP error during list \"" + path + "\"", e);
+			throw new IORuntimeException(FTP_ERROR_DURING_LIST + path + "\"", e);
 		}
+	}
+
+	/**
+	 * @return a read-only cached data version of this AbstractFile
+	 */
+	@Override
+	public CachedFileAttributes toCache() {
+		return getCurrentFile()
+		        .map(f -> makeCachedFileAttributesFromFTPFileRaw(this, f))
+		        .orElseGet(() -> CachedFileAttributes.notExists(this));
+	}
+
+	private CachedFileAttributes makeCachedFileAttributesFromFTPFileRaw(final AbstractFile related,
+	                                                                    final org.apache.commons.net.ftp.FTPFile f) {
+		return new CachedFileAttributes(related,
+		        f.getSize(), f.getTimestamp().getTimeInMillis(), true,
+		        f.isDirectory(), f.isFile(), f.isSymbolicLink(), f.isUnknown());
 	}
 
 	@Override
@@ -147,7 +169,27 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 			        .filter(name -> name.equalsIgnoreCase(getName()) == false)
 			        .map(name -> fileSystem.getFromPath(path + "/" + name));
 		} catch (final IOException e) {
-			throw new IORuntimeException("FTP error during list \"" + path + "\"", e);
+			throw new IORuntimeException(FTP_ERROR_DURING_LIST + path + "\"", e);
+		}
+	}
+
+	@Override
+	public Stream<CachedFileAttributes> toCachedList() {
+		try {
+			return Optional.ofNullable(fileSystem.getFtpListing())
+			        .map(ftpL -> {
+				        if (ftpL.equals(NLST)) {
+					        return MLSD;
+				        } else {
+					        return ftpL;
+				        }
+			        }).orElse(MLSD)
+			        .rawListDirectory(ftpClient, path)
+			        .filter(f -> f.getName().equalsIgnoreCase(getName()) == false)
+			        .map(f -> makeCachedFileAttributesFromFTPFileRaw(
+			                fileSystem.getFromPath(path + "/" + f.getName()), f));
+		} catch (final IOException e) {
+			throw new IORuntimeException(FTP_ERROR_DURING_LIST + path + "\"", e);
 		}
 	}
 

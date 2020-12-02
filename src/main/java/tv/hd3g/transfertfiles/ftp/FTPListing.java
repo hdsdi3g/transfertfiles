@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
 
 public enum FTPListing {
 
@@ -30,27 +31,44 @@ public enum FTPListing {
 			final var rawList = Optional.ofNullable(ftpClient.listNames(path)).orElse(new String[] {});
 			return Stream.of(rawList);
 		}
+
+		@Override
+		Stream<FTPFile> rawListDirectory(final FTPClient ftpClient, final String path) throws IOException {
+			throw new IllegalArgumentException("Not supported with NLST");
+		}
 	},
 	LIST {
 		@Override
 		Stream<String> listDirectory(final FTPClient ftpClient, final String path) throws IOException {
+			return rawListDirectory(ftpClient, path).map(org.apache.commons.net.ftp.FTPFile::getName);
+		}
+
+		@Override
+		Stream<FTPFile> rawListDirectory(final FTPClient ftpClient, final String path) throws IOException {
 			return rawFTPFileListToStream(ftpClient.listFiles(path));
 		}
 	},
 	MLSD {
 		@Override
 		Stream<String> listDirectory(final FTPClient ftpClient, final String path) throws IOException {
+			return rawListDirectory(ftpClient, path).map(org.apache.commons.net.ftp.FTPFile::getName);
+		}
+
+		@Override
+		Stream<FTPFile> rawListDirectory(final FTPClient ftpClient, final String path) throws IOException {
 			return rawFTPFileListToStream(ftpClient.mlistDir(path));
 		}
 	};
 
-	private static Stream<String> rawFTPFileListToStream(final org.apache.commons.net.ftp.FTPFile[] rawList) {
+	private static Stream<org.apache.commons.net.ftp.FTPFile> rawFTPFileListToStream(final org.apache.commons.net.ftp.FTPFile[] rawList) {
 		final var protectedList = Optional.ofNullable(rawList)
 		        .orElse(new org.apache.commons.net.ftp.FTPFile[] {});
-		return Stream.of(protectedList)
-		        .map(org.apache.commons.net.ftp.FTPFile::getName);
+		return Stream.of(protectedList);
 	}
 
 	abstract Stream<String> listDirectory(final FTPClient ftpClient, final String path) throws IOException;
+
+	abstract Stream<org.apache.commons.net.ftp.FTPFile> rawListDirectory(final FTPClient ftpClient,
+	                                                                     final String path) throws IOException;
 
 }
