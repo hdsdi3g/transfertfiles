@@ -41,7 +41,7 @@ class FTPESFileSystemTest {
 		port = 21;
 		username = "testusr";
 		password = String.valueOf(System.nanoTime());
-		fs = new FTPESFileSystem(host, port, username, password.toCharArray(), true);
+		fs = new FTPESFileSystem(host, port, username, password.toCharArray(), true, "");
 	}
 
 	@Test
@@ -53,6 +53,6 @@ class FTPESFileSystemTest {
 
 	@Test
 	void testToString() {
-		assertEquals("ftpes://" + username + "@" + host + ":" + port, fs.toString());
+		assertEquals("ftpes://" + username + "@" + host + ":" + port + "/", fs.toString());
 	}
 }

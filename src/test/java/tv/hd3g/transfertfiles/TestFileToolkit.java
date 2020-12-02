@@ -29,6 +29,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.longThat;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.DISTANTTOLOCAL;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.LOCALTODISTANT;
 
@@ -289,25 +292,25 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 			assertFalse(localFileCopy.exists());
 
 			final var to = Mockito.mock(TransfertObserver.class);
-			Mockito.when(to.onTransfertProgress(
+			when(to.onTransfertProgress(
 			        any(File.class), any(AbstractFile.class), any(TransfertDirection.class), anyLong(),
 			        anyLong()))
-			        .thenReturn(true);
+			                .thenReturn(true);
 
 			f.copyAbstractToLocal(localFileCopy, to);
 			assertTrue(localFileCopy.exists());
 			assertTrue(f.exists());
 			assertEquals("A", FileUtils.readFileToString(localFileCopy, defaultCharset()));
 
-			Mockito.verify(to, Mockito.times(1)).onTransfertProgress(
+			verify(to, Mockito.times(1)).onTransfertProgress(
 			        eq(localFileCopy),
 			        eq(f),
 			        eq(DISTANTTOLOCAL),
 			        anyLong(),
 			        eq(localFileCopy.length()));
-			Mockito.verify(to, Mockito.times(1))
+			verify(to, Mockito.times(1))
 			        .beforeTransfert(eq(localFileCopy), eq(f), eq(DISTANTTOLOCAL));
-			Mockito.verify(to, Mockito.times(1))
+			verify(to, Mockito.times(1))
 			        .afterTransfert(eq(localFileCopy), eq(f), eq(DISTANTTOLOCAL), any(
 			                Duration.class));
 		});
@@ -318,25 +321,25 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 			assertTrue(localFileCopy.exists());
 
 			final var to = Mockito.mock(TransfertObserver.class);
-			Mockito.when(to.onTransfertProgress(
+			when(to.onTransfertProgress(
 			        any(File.class), any(AbstractFile.class), any(TransfertDirection.class), anyLong(),
 			        anyLong()))
-			        .thenReturn(true);
+			                .thenReturn(true);
 
 			f.sendLocalToAbstract(localFileCopy, to);
 			assertTrue(f.exists());
 			assertEquals(2, f.length());
 			assertEquals("BB", FileUtils.readFileToString(file, defaultCharset()));
 
-			Mockito.verify(to, Mockito.times(1)).onTransfertProgress(
+			verify(to, Mockito.times(1)).onTransfertProgress(
 			        eq(localFileCopy),
 			        eq(f),
 			        eq(LOCALTODISTANT),
 			        anyLong(),
 			        eq(localFileCopy.length()));
-			Mockito.verify(to, Mockito.times(1))
+			verify(to, Mockito.times(1))
 			        .beforeTransfert(eq(localFileCopy), eq(f), eq(LOCALTODISTANT));
-			Mockito.verify(to, Mockito.times(1))
+			verify(to, Mockito.times(1))
 			        .afterTransfert(eq(localFileCopy), eq(f), eq(LOCALTODISTANT), any(Duration.class));
 		});
 
@@ -425,15 +428,15 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		tests.put("testObserverStop_DISTANTTOLOCAL",
 		        f -> {
 			        final var direction = DISTANTTOLOCAL;
-			        Mockito.when(to.onTransfertProgress(
+			        when(to.onTransfertProgress(
 			                any(File.class), any(AbstractFile.class), eq(direction), anyLong(), anyLong()))
-			                .thenReturn(false);
+			                        .thenReturn(false);
 			        f.copyAbstractToLocal(localFileCopy, to);
 			        final long expectedSize = baseBufferSize;
 
-			        Mockito.verify(to, Mockito.times(1)).onTransfertProgress(eq(localFileCopy),
+			        verify(to, Mockito.times(1)).onTransfertProgress(eq(localFileCopy),
 			                eq(f), eq(direction), anyLong(), longThat(l -> l > 0 && l <= baseBufferSize));
-			        Mockito.verify(to, Mockito.never())
+			        verify(to, Mockito.never())
 			                .afterTransfert(any(File.class), any(AbstractFile.class), eq(direction), any(
 			                        Duration.class));
 
@@ -442,7 +445,7 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 			        assertTrue(localFileCopy.length() <= expectedSize);
 			        assertEquals(stringContent.substring(0, (int) localFileCopy.length()),
 			                FileUtils.readFileToString(localFileCopy, defaultCharset()));
-			        Mockito.verify(to, Mockito.times(1))
+			        verify(to, Mockito.times(1))
 			                .beforeTransfert(eq(localFileCopy), eq(f), eq(direction));
 		        });
 		tests.put("testObserverStop_LOCALTODISTANT",
@@ -450,16 +453,16 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 			        final var direction = LOCALTODISTANT;
 			        internalFile.renameTo(localFileCopy);
 
-			        Mockito.when(to.onTransfertProgress(
+			        when(to.onTransfertProgress(
 			                any(File.class), any(AbstractFile.class), eq(direction), anyLong(), anyLong()))
-			                .thenReturn(false);
+			                        .thenReturn(false);
 			        f.sendLocalToAbstract(localFileCopy, to);
 			        final long expectedSize = baseBufferSize;
 
-			        Mockito.verify(to, Mockito.times(1)).onTransfertProgress(
+			        verify(to, Mockito.times(1)).onTransfertProgress(
 			                eq(localFileCopy), eq(f), eq(direction), anyLong(),
 			                longThat(l -> l > 0 && l <= baseBufferSize));
-			        Mockito.verify(to, Mockito.never())
+			        verify(to, Mockito.never())
 			                .afterTransfert(any(File.class), any(AbstractFile.class), eq(direction),
 			                        any(Duration.class));
 
@@ -467,29 +470,29 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 			        assertTrue(internalFile.length() <= expectedSize);
 			        assertEquals(stringContent.substring(0, (int) internalFile.length()),
 			                FileUtils.readFileToString(internalFile, defaultCharset()));
-			        Mockito.verify(to, Mockito.times(1))
+			        verify(to, Mockito.times(1))
 			                .beforeTransfert(eq(localFileCopy), eq(f), eq(direction));
 		        });
 		tests.put("testObserverFull_DISTANTTOLOCAL",
 		        f -> {
 			        final var direction = DISTANTTOLOCAL;
 			        final var expectedSize = stringContent.length();
-			        Mockito.when(to.onTransfertProgress(
+			        when(to.onTransfertProgress(
 			                any(File.class), any(AbstractFile.class), eq(direction), anyLong(), anyLong()))
-			                .thenReturn(true);
+			                        .thenReturn(true);
 			        f.copyAbstractToLocal(localFileCopy, to);
 
-			        Mockito.verify(to, Mockito.atLeastOnce()).onTransfertProgress(
+			        verify(to, atLeastOnce()).onTransfertProgress(
 			                eq(localFileCopy), eq(f), eq(direction), anyLong(),
 			                longThat(l -> l > 0 && l <= expectedSize));
-			        Mockito.verify(to, Mockito.times(1))
+			        verify(to, Mockito.times(1))
 			                .afterTransfert(eq(localFileCopy), eq(f), eq(direction), any(Duration.class));
 
 			        assertTrue(localFileCopy.exists());
 			        assertEquals(expectedSize, localFileCopy.length());
 			        assertEquals(stringContent.substring(0, expectedSize),
 			                FileUtils.readFileToString(localFileCopy, defaultCharset()));
-			        Mockito.verify(to, Mockito.times(1))
+			        verify(to, Mockito.times(1))
 			                .beforeTransfert(eq(localFileCopy), eq(f), eq(direction));
 		        });
 		tests.put("testObserverFull_LOCALTODISTANT",
@@ -498,22 +501,22 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 			        final var expectedSize = stringContent.length();
 			        internalFile.renameTo(localFileCopy);
 
-			        Mockito.when(to.onTransfertProgress(
+			        when(to.onTransfertProgress(
 			                any(File.class), any(AbstractFile.class), eq(direction), anyLong(), anyLong()))
-			                .thenReturn(true);
+			                        .thenReturn(true);
 			        f.sendLocalToAbstract(localFileCopy, to);
 
-			        Mockito.verify(to, Mockito.atLeastOnce()).onTransfertProgress(
+			        verify(to, atLeastOnce()).onTransfertProgress(
 			                eq(localFileCopy), eq(f), eq(direction), anyLong(),
 			                longThat(l -> l > 0 && l <= expectedSize));
-			        Mockito.verify(to, Mockito.times(1))
+			        verify(to, Mockito.times(1))
 			                .afterTransfert(eq(localFileCopy), eq(f), eq(direction), any(Duration.class));
 
 			        assertTrue(internalFile.exists());
 			        assertEquals(expectedSize, internalFile.length());
 			        assertEquals(stringContent.substring(0, expectedSize),
 			                FileUtils.readFileToString(internalFile, defaultCharset()));
-			        Mockito.verify(to, Mockito.times(1))
+			        verify(to, Mockito.times(1))
 			                .beforeTransfert(eq(localFileCopy), eq(f), eq(direction));
 		        });
 

@@ -88,6 +88,11 @@ public class CachedFileAttributes {
 		return path;
 	}
 
+	@Override
+	public String toString() {
+		return getPath();
+	}
+
 	public String getParentPath() {
 		return FilenameUtils.getFullPathNoEndSeparator(path);
 	}

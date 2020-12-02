@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -55,8 +56,8 @@ class StoppableOutputStreamTest {
 		Mockito.verify(out, Mockito.only()).write(eq(42));
 		os.setStop();
 		assertThrows(IOException.class, () -> os.write(42));
-		Mockito.verify(out, Mockito.atLeastOnce()).flush();
-		Mockito.verify(out, Mockito.atLeastOnce()).close();
+		Mockito.verify(out, times(1)).flush();
+		Mockito.verify(out, times(1)).close();
 	}
 
 	@Test
@@ -66,8 +67,8 @@ class StoppableOutputStreamTest {
 		Mockito.verify(out, Mockito.only()).write(eq(11));
 		os.setStop();
 		assertThrows(IOException.class, () -> os.write(v));
-		Mockito.verify(out, Mockito.atLeastOnce()).flush();
-		Mockito.verify(out, Mockito.atLeastOnce()).close();
+		Mockito.verify(out, times(1)).flush();
+		Mockito.verify(out, times(1)).close();
 	}
 
 	@Test
@@ -77,8 +78,8 @@ class StoppableOutputStreamTest {
 		Mockito.verify(out, Mockito.only()).write(eq(11));
 		os.setStop();
 		assertThrows(IOException.class, () -> os.write(v, 0, 1));
-		Mockito.verify(out, Mockito.atLeastOnce()).flush();
-		Mockito.verify(out, Mockito.atLeastOnce()).close();
+		Mockito.verify(out, times(1)).flush();
+		Mockito.verify(out, times(1)).close();
 	}
 
 	@Test

@@ -59,7 +59,7 @@ public class LocalFile extends CommonAbstractFile<LocalFileSystem> {// NOSONAR S
 		this.internalFile = internalFile;
 	}
 
-	File getInternalFile() {
+	public File getInternalFile() {
 		return internalFile;
 	}
 

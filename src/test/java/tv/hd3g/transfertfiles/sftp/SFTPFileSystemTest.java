@@ -174,7 +174,7 @@ class SFTPFileSystemTest {
 	void init() throws IOException {
 		final var savedFile = File.createTempFile("testKnownHosts", ".txt");
 		System.setProperty("ssh.knownhosts", savedFile.getAbsolutePath());
-		fs = new SFTPFileSystem(host, port, username);
+		fs = new SFTPFileSystem(host, port, username, "");
 		noPassword = "".toCharArray();
 		badPassword = "nope".toCharArray();
 	}
@@ -190,7 +190,7 @@ class SFTPFileSystemTest {
 	@Test
 	void testSFTPFileSystem_noUsername() throws IOException {
 		assertThrows(IllegalArgumentException.class, () -> {
-			new SFTPFileSystem(host, port, "");
+			new SFTPFileSystem(host, port, "", "");
 		});
 	}
 
@@ -248,13 +248,13 @@ class SFTPFileSystemTest {
 
 	@Test
 	void testConnect_badHostPort() throws UnknownHostException {
-		fs = new SFTPFileSystem(InetAddress.getByName("127.255.255.255"), port, username);
+		fs = new SFTPFileSystem(InetAddress.getByName("127.255.255.255"), port, username, "");
 		fs.getClient().setTimeout(1);
 		fs.getClient().setConnectTimeout(1);
 		assertThrows(IORuntimeException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 
-		fs = new SFTPFileSystem(host, 1, username);
+		fs = new SFTPFileSystem(host, 1, username, "");
 		fs.getClient().setTimeout(1);
 		fs.getClient().setConnectTimeout(1);
 		assertThrows(IORuntimeException.class, () -> fs.connect());
@@ -411,14 +411,14 @@ class SFTPFileSystemTest {
 
 	@Test
 	void testEqualshashCode() {
-		final var lfs = new SFTPFileSystem(host, port, username);
+		final var lfs = new SFTPFileSystem(host, port, username, "");
 		assertEquals(lfs, fs);
 		assertEquals(lfs.hashCode(), fs.hashCode());
 	}
 
 	@Test
 	void testToString() {
-		assertEquals("sftp://" + username + "@" + host + ":" + port, fs.toString());
+		assertEquals("sftp://" + username + "@" + host + ":" + port + "/", fs.toString());
 	}
 
 }

@@ -89,7 +89,7 @@ class SFTPFileTest extends TestFileToolkit<SFTPFile> {
 
 	@Override
 	protected AbstractFileSystem<SFTPFile> createFileSystem() {
-		final var fs = new SFTPFileSystem(host, sshd.getPort(), "testusr");
+		final var fs = new SFTPFileSystem(host, sshd.getPort(), "testusr", "");
 		fs.setPasswordAuth(password.toCharArray());
 		fs.connect();
 		return fs;

@@ -65,7 +65,7 @@ class FTPFileTest extends TestFileToolkit<FTPFile> {
 
 	@Override
 	protected AbstractFileSystem<FTPFile> createFileSystem() {
-		final var fs = new FTPFileSystem(host, port, username, password.toCharArray(), true);
+		final var fs = new FTPFileSystem(host, port, username, password.toCharArray(), true, "");
 		fs.connect();
 		return fs;
 	}

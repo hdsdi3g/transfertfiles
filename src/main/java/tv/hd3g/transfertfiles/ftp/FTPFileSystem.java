@@ -29,9 +29,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import tv.hd3g.commons.IORuntimeException;
-import tv.hd3g.transfertfiles.AbstractFileSystem;
+import tv.hd3g.transfertfiles.CommonAbstractFileSystem;
 
-public class FTPFileSystem implements AbstractFileSystem<FTPFile> {
+public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 	private static final Logger log = LogManager.getLogger();
 
 	protected final InetAddress host;
@@ -47,10 +47,12 @@ public class FTPFileSystem implements AbstractFileSystem<FTPFile> {
 	                     final int port,
 	                     final String username,
 	                     final char[] password,
-	                     final boolean passiveMode) {
+	                     final boolean passiveMode,
+	                     final String basePath) {
+		super(basePath);
 		this.host = Objects.requireNonNull(host);
 		this.port = port;
-		this.username = Objects.requireNonNull(username);
+		this.username = Objects.requireNonNull(username, "FTP username");
 		if (username.length() == 0) {
 			throw new IllegalArgumentException("Invalid (empty) username");
 		}
@@ -67,7 +69,7 @@ public class FTPFileSystem implements AbstractFileSystem<FTPFile> {
 
 	@Override
 	public String toString() {
-		return "ftp://" + username + "@" + host + ":" + port;
+		return "ftp://" + username + "@" + host + ":" + port + getBasePath();
 	}
 
 	public boolean isPassiveMode() {
@@ -163,8 +165,9 @@ public class FTPFileSystem implements AbstractFileSystem<FTPFile> {
 		if (isAvaliable() == false) {
 			throw new IORuntimeException("FTP client not connected");
 		}
-		log.trace("Create new FTPFile to {}/{}", this, path);
-		return new FTPFile(this, path);
+		final var rpath = getPathFromRelative(path);
+		log.trace("Create new FTPFile to {}/{}", this, rpath);
+		return new FTPFile(this, rpath);
 	}
 
 	public void setFtpListing(final FTPListing ftpListing) {
@@ -177,7 +180,10 @@ public class FTPFileSystem implements AbstractFileSystem<FTPFile> {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(host, port, username);
+		final var prime = 31;
+		var result = super.hashCode();
+		result = prime * result + Objects.hash(host, port, username);
+		return result;
 	}
 
 	@Override
@@ -185,7 +191,7 @@ public class FTPFileSystem implements AbstractFileSystem<FTPFile> {
 		if (this == obj) {
 			return true;
 		}
-		if (obj == null) {
+		if (!super.equals(obj)) {
 			return false;
 		}
 		if (getClass() != obj.getClass()) {

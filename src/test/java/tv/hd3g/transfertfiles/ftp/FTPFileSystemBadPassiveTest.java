@@ -149,7 +149,7 @@ class FTPFileSystemBadPassiveTest {
 	@BeforeEach
 	void init() throws IOException {
 		goodPassword = password.toCharArray();
-		fs = new FTPFileSystem(host, port, username, goodPassword, false);
+		fs = new FTPFileSystem(host, port, username, goodPassword, false, "");
 	}
 
 	@AfterEach
@@ -187,7 +187,7 @@ class FTPFileSystemBadPassiveTest {
 
 	@Test
 	void testGetFromPath_ForcePassive() {
-		fs = new FTPFileSystem(host, port, username, goodPassword, true);
+		fs = new FTPFileSystem(host, port, username, goodPassword, true, "");
 		assertThrows(IORuntimeException.class, () -> fs.getFromPath("target"));
 		fs.connect();
 		final var f = fs.getFromPath("target");

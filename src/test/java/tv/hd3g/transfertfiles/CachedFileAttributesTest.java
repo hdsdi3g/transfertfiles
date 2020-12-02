@@ -18,6 +18,7 @@ package tv.hd3g.transfertfiles;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Random;
@@ -69,7 +70,7 @@ class CachedFileAttributesTest {
 		when(f.isSpecial()).thenReturn(special);
 
 		c = new CachedFileAttributes(f, length, lastModified, exists, directory, file, link, special);
-		Mockito.verify(f, Mockito.only()).getPath();
+		verify(f, Mockito.only()).getPath();
 	}
 
 	@AfterEach
@@ -80,14 +81,14 @@ class CachedFileAttributesTest {
 	@Test
 	void testCachedFileAttributesAbstractFile() {
 		c = new CachedFileAttributes(f);
-		Mockito.verify(f, Mockito.times(2)).getPath();
-		Mockito.verify(f, Mockito.atLeastOnce()).length();
-		Mockito.verify(f, Mockito.atLeastOnce()).lastModified();
-		Mockito.verify(f, Mockito.atLeastOnce()).exists();
-		Mockito.verify(f, Mockito.atLeastOnce()).isDirectory();
-		Mockito.verify(f, Mockito.atLeastOnce()).isFile();
-		Mockito.verify(f, Mockito.atLeastOnce()).isLink();
-		Mockito.verify(f, Mockito.atLeastOnce()).isSpecial();
+		verify(f, Mockito.times(2)).getPath();
+		verify(f, Mockito.times(1)).length();
+		verify(f, Mockito.times(1)).lastModified();
+		verify(f, Mockito.times(1)).exists();
+		verify(f, Mockito.times(1)).isDirectory();
+		verify(f, Mockito.times(1)).isFile();
+		verify(f, Mockito.times(1)).isLink();
+		verify(f, Mockito.times(1)).isSpecial();
 
 		assertEquals(f, c.getAbstractFile());
 		assertEquals(path.substring(1), c.getName());
@@ -116,7 +117,7 @@ class CachedFileAttributesTest {
 		assertEquals(path.substring(1), c.getName());
 		assertEquals(path, c.getPath());
 
-		Mockito.verify(f, Mockito.times(2)).getPath();
+		verify(f, Mockito.times(2)).getPath();
 	}
 
 	@Test
@@ -135,12 +136,17 @@ class CachedFileAttributesTest {
 	}
 
 	@Test
+	void testToString() {
+		assertEquals(path, c.toString());
+	}
+
+	@Test
 	void testGetParentPath() {
 		assertEquals("/", c.getParentPath());
 
 		when(f.getPath()).thenReturn("/aaa/bbb");
 		c = new CachedFileAttributes(f, length, lastModified, exists, directory, file, link, special);
-		Mockito.verify(f, Mockito.times(2)).getPath();
+		verify(f, Mockito.times(2)).getPath();
 		assertEquals("/aaa", c.getParentPath());
 	}
 
@@ -187,13 +193,13 @@ class CachedFileAttributesTest {
 	@Test
 	void testEqualsObject() {
 		assertEquals(CachedFileAttributes.notExists(f), c);
-		Mockito.verify(f, Mockito.times(2)).getPath();
+		verify(f, Mockito.times(2)).getPath();
 	}
 
 	@Test
 	void testHashCode() {
 		assertEquals(CachedFileAttributes.notExists(f).hashCode(), c.hashCode());
-		Mockito.verify(f, Mockito.times(2)).getPath();
+		verify(f, Mockito.times(2)).getPath();
 	}
 
 }

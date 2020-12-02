@@ -88,7 +88,7 @@ class FTPFileSystemTest {
 		goodPassword = password.toCharArray();
 		noPassword = "".toCharArray();
 		badPassword = "nope".toCharArray();
-		fs = new FTPFileSystem(host, port, username, goodPassword, true);
+		fs = new FTPFileSystem(host, port, username, goodPassword, true, "");
 	}
 
 	@AfterEach
@@ -101,10 +101,10 @@ class FTPFileSystemTest {
 	@Test
 	void testFTPFileSystem_noUserName() {
 		assertThrows(IllegalArgumentException.class, () -> {
-			new FTPFileSystem(host, port, "", goodPassword, true);
+			new FTPFileSystem(host, port, "", goodPassword, true, "");
 		});
-		fs = new FTPFileSystem(host, port, username, noPassword, true);
-		fs = new FTPFileSystem(host, port, username, null, true);
+		fs = new FTPFileSystem(host, port, username, noPassword, true, "");
+		fs = new FTPFileSystem(host, port, username, null, true, "");
 	}
 
 	@Test
@@ -152,7 +152,7 @@ class FTPFileSystemTest {
 
 	@Test
 	void testConnectIsAvaliable_badPassword() {
-		fs = new FTPFileSystem(host, port, username, badPassword, false);
+		fs = new FTPFileSystem(host, port, username, badPassword, false, "");
 		assertFalse(fs.isAvaliable());
 		assertThrows(IORuntimeException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
@@ -162,7 +162,7 @@ class FTPFileSystemTest {
 
 	@Test
 	void testConnectIsAvaliable_noPassword() {
-		fs = new FTPFileSystem(host, port, username, noPassword, false);
+		fs = new FTPFileSystem(host, port, username, noPassword, false, "");
 		assertFalse(fs.isAvaliable());
 		assertThrows(IORuntimeException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
@@ -209,16 +209,16 @@ class FTPFileSystemTest {
 
 	@Test
 	void testEqualsHashCode() {
-		final var lfs = new FTPFileSystem(host, port, username, noPassword, false);
+		final var lfs = new FTPFileSystem(host, port, username, noPassword, false, "");
 		assertEquals(lfs, fs);
 		assertEquals(lfs.hashCode(), fs.hashCode());
 	}
 
 	@Test
 	void testToString() {
-		assertEquals("ftp://" + username + "@" + host + ":" + port, fs.toString());
-		fs = new FTPFileSystem(host, port, username, noPassword, false);
-		assertEquals("ftp://" + username + "@" + host + ":" + port, fs.toString());
+		assertEquals("ftp://" + username + "@" + host + ":" + port + "/", fs.toString());
+		fs = new FTPFileSystem(host, port, username, noPassword, false, "");
+		assertEquals("ftp://" + username + "@" + host + ":" + port + "/", fs.toString());
 	}
 
 }

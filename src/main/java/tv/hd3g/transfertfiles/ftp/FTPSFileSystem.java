@@ -30,8 +30,9 @@ public class FTPSFileSystem extends FTPFileSystem {
 	                      final int port,
 	                      final String username,
 	                      final char[] password,
-	                      final boolean passiveMode) {
-		super(host, port, username, password, passiveMode);
+	                      final boolean passiveMode,
+	                      final String basePath) {
+		super(host, port, username, password, passiveMode, basePath);
 	}
 
 	@Override
@@ -41,7 +42,7 @@ public class FTPSFileSystem extends FTPFileSystem {
 
 	@Override
 	public String toString() {
-		return "ftps://" + username + "@" + host + ":" + port;
+		return "ftps://" + username + "@" + host + ":" + port + getBasePath();
 	}
 
 }

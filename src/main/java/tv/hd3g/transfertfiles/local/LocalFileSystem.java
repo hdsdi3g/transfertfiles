@@ -26,14 +26,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import tv.hd3g.commons.IORuntimeException;
-import tv.hd3g.transfertfiles.AbstractFileSystem;
+import tv.hd3g.transfertfiles.AbstractFile;
+import tv.hd3g.transfertfiles.CommonAbstractFileSystem;
 
-public class LocalFileSystem implements AbstractFileSystem<LocalFile> {
+public class LocalFileSystem extends CommonAbstractFileSystem<LocalFile> {
 	private static final Logger log = LogManager.getLogger();
 
 	private final File relativePath;
 
 	public LocalFileSystem(final File relativePath) {
+		super("");
 		try {
 			this.relativePath = Objects.requireNonNull(relativePath).getCanonicalFile()
 			        .toPath().toRealPath().normalize().toFile();
@@ -58,9 +60,10 @@ public class LocalFileSystem implements AbstractFileSystem<LocalFile> {
 
 	@Override
 	public LocalFile getFromPath(final String path) {
-		final var file = new File(relativePath, path.replace('\\', '/'))
+		final var rpath = getPathFromRelative(path.replace('\\', '/'));
+		final var file = new File(relativePath, rpath)
 		        .getAbsoluteFile().toPath().normalize().toFile();
-		log.trace("Get LocalFile from path {}: {}", path, file);
+		log.trace("Get LocalFile from path {}: {}", rpath, file);
 
 		/**
 		 * Check if new path is outside relativePath
@@ -102,7 +105,10 @@ public class LocalFileSystem implements AbstractFileSystem<LocalFile> {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(relativePath);
+		final var prime = 31;
+		var result = super.hashCode();
+		result = prime * result + Objects.hash(relativePath);
+		return result;
 	}
 
 	@Override
@@ -110,7 +116,7 @@ public class LocalFileSystem implements AbstractFileSystem<LocalFile> {
 		if (this == obj) {
 			return true;
 		}
-		if (obj == null) {
+		if (!super.equals(obj)) {
 			return false;
 		}
 		if (getClass() != obj.getClass()) {
@@ -129,11 +135,7 @@ public class LocalFileSystem implements AbstractFileSystem<LocalFile> {
 			/***/
 		}
 		final var rPath = relativePath.getAbsolutePath().replace('\\', '/');
-		if (rPath.startsWith("/")) {
-			return "file://" + hostName + rPath;
-		} else {
-			return "file://" + hostName + "/" + rPath;
-		}
+		return "file://" + hostName + AbstractFile.normalizePath(getBasePath() + rPath);
 	}
 
 }

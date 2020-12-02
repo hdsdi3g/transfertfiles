@@ -59,8 +59,7 @@ class LocalFileSystemTest {
 	void testGetFromPath_ok() {
 		assertEquals(new File(root, "this/path").getAbsoluteFile(),
 		        fs.getFromPath("this/path").getInternalFile());
-		assertEquals(new File(root, "/path").getAbsoluteFile(),
-		        fs.getFromPath("this/../path").getInternalFile());
+		assertThrows(IllegalArgumentException.class, () -> fs.getFromPath("this/../path"));
 	}
 
 	@Test
@@ -75,9 +74,9 @@ class LocalFileSystemTest {
 
 	@Test
 	void testGetFromPath_outsideRoot() {
-		assertThrows(IORuntimeException.class, () -> fs.getFromPath("../path"));
-		assertThrows(IORuntimeException.class, () -> fs.getFromPath("sub/../../path"));
-		assertThrows(IORuntimeException.class, () -> fs.getFromPath("path/../.."));
+		assertThrows(IllegalArgumentException.class, () -> fs.getFromPath("../path"));
+		assertThrows(IllegalArgumentException.class, () -> fs.getFromPath("sub/../../path"));
+		assertThrows(IllegalArgumentException.class, () -> fs.getFromPath("path/../.."));
 	}
 
 	@Test

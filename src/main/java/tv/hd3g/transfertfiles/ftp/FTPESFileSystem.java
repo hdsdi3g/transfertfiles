@@ -27,11 +27,12 @@ import org.apache.commons.net.ftp.FTPSClient;
 public class FTPESFileSystem extends FTPFileSystem {
 
 	public FTPESFileSystem(final InetAddress host,
-	                      final int port,
-	                      final String username,
-	                      final char[] password,
-	                      final boolean passiveMode) {
-		super(host, port, username, password, passiveMode);
+	                       final int port,
+	                       final String username,
+	                       final char[] password,
+	                       final boolean passiveMode,
+	                       final String basePath) {
+		super(host, port, username, password, passiveMode, basePath);
 	}
 
 	@Override
@@ -41,7 +42,7 @@ public class FTPESFileSystem extends FTPFileSystem {
 
 	@Override
 	public String toString() {
-		return "ftpes://" + username + "@" + host + ":" + port;
+		return "ftpes://" + username + "@" + host + ":" + port + getBasePath();
 	}
 
 }

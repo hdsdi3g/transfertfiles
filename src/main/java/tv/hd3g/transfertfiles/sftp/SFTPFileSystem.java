@@ -35,9 +35,9 @@ import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.sftp.SFTPClient;
 import net.schmizz.sshj.userauth.keyprovider.KeyProvider;
 import tv.hd3g.commons.IORuntimeException;
-import tv.hd3g.transfertfiles.AbstractFileSystem;
+import tv.hd3g.transfertfiles.CommonAbstractFileSystem;
 
-public class SFTPFileSystem implements AbstractFileSystem<SFTPFile> {
+public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 	private static final Logger log = LogManager.getLogger();
 
 	private final SSHClient client;
@@ -51,12 +51,13 @@ public class SFTPFileSystem implements AbstractFileSystem<SFTPFile> {
 	private boolean statefulSFTPClient;
 	private volatile boolean wasConnected;
 
-	public SFTPFileSystem(final InetAddress host, final int port, final String username) {
+	public SFTPFileSystem(final InetAddress host, final int port, final String username, final String basePath) {
+		super(basePath);
 		client = new SSHClient();
 		wasConnected = false;
 		this.host = Objects.requireNonNull(host);
 		this.port = port;
-		this.username = Objects.requireNonNull(username, "username");
+		this.username = Objects.requireNonNull(username, "SSH username");
 		if (username.length() == 0) {
 			throw new IllegalArgumentException("Invalid (empty) username");
 		}
@@ -95,7 +96,7 @@ public class SFTPFileSystem implements AbstractFileSystem<SFTPFile> {
 
 	@Override
 	public String toString() {
-		return "sftp://" + username + "@" + host + ":" + port;
+		return "sftp://" + username + "@" + host + ":" + port + getBasePath();
 	}
 
 	public void setPasswordAuth(final char[] password) {
@@ -241,8 +242,9 @@ public class SFTPFileSystem implements AbstractFileSystem<SFTPFile> {
 				throw new IORuntimeException("SSH client was disconnected. Please retry with another instance.");
 			}
 		}
-		log.trace("Create new SFTPFile to {}/{}", this, path);
-		return new SFTPFile(this, sftpClient, path);
+		final var rpath = getPathFromRelative(path);
+		log.trace("Create new SFTPFile to {}/{}", this, rpath);
+		return new SFTPFile(this, sftpClient, rpath);
 	}
 
 	public InetAddress getHost() {
@@ -255,26 +257,19 @@ public class SFTPFileSystem implements AbstractFileSystem<SFTPFile> {
 
 	@Override
 	public int hashCode() {
-		final var prime = 31;
-		var result = 1;
-		result = prime * result + Arrays.hashCode(password);
-		result = prime * result + Objects.hash(host, port, username);
-		return result;
+		return 31 * super.hashCode() + Objects.hash(host, port, username);
 	}
 
 	@Override
 	public boolean equals(final Object obj) {
 		if (this == obj) {
 			return true;
-		}
-		if (obj == null) {
-			return false;
-		}
-		if (getClass() != obj.getClass()) {
+		} else if (super.equals(obj) == false || getClass() != obj.getClass()) {
 			return false;
 		}
 		final var other = (SFTPFileSystem) obj;
-		return Objects.equals(host, other.host) && Arrays.equals(password, other.password) && port == other.port
+		return Objects.equals(host, other.host)
+		       && port == other.port
 		       && Objects.equals(username, other.username);
 	}
 

@@ -93,23 +93,25 @@ public interface AbstractFile {
 
 	static String normalizePath(final String path) {
 		Objects.requireNonNull(path, "path can't be null");
-		if (path.equals("") || path.equals("/")) {
+		var p = path;
+		if (p.equals("") || p.equals("/")) {
 			return "/";
-		} else if (path.contains("/../")
-		           || path.contains("../")
-		           || path.contains("./")
-		           || path.contains("/./")
-		           || path.contains("/~/")
-		           || path.contains("~/")
-		           || path.equals("..")
-		           || path.equals(".")
-		           || path.equals("~")) {
+		}
+		while (p.contains("//")) {
+			p = p.replace("//", "/");
+		}
+		if (p.contains("../")
+		    || p.contains("./")
+		    || p.contains("/~/")
+		    || p.startsWith("~/")
+		    || p.equals("..")
+		    || p.equals(".")
+		    || p.equals("~")) {
 			throw new IllegalArgumentException("Invalid path: \"" + path + "\"");
 		}
 
-		var p = path;
-		if (path.startsWith("/") == false) {
-			p = "/" + path;
+		if (p.startsWith("/") == false) {
+			p = "/" + p;
 		}
 		if (p.endsWith("/")) {
 			return p.substring(0, p.length() - 1);
