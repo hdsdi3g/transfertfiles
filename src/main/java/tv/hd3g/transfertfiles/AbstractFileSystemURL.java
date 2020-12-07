@@ -16,6 +16,7 @@
  */
 package tv.hd3g.transfertfiles;
 
+import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static tv.hd3g.transfertfiles.AbstractFile.normalizePath;
@@ -30,12 +31,14 @@ import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.net.UnknownHostException;
 import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -85,7 +88,9 @@ public class AbstractFileSystemURL implements Closeable {
 	/**
 	 * @param ressourceURL like "protocol://user:password@host/basePath?password=secret&active&key=/path/to/privateOpenSSHkey"
 	 *        query must not be encoded
-	 *        use ":password" or "password=" as you want. Never add a "&" in the password in query.
+	 *        use ":password" or "password=" as you want.
+	 *        Never set an "@" in the user:password place. Quotation mark here are ignored (simply used as quotation marks).
+	 *        Never add directly an "&" in the password in query, but you can use " (quotation mark) like password="s&e?c=r+t"
 	 *        key password can be set by... set password
 	 *        FTP(S|ES) is passive by default.
 	 */
@@ -154,11 +159,31 @@ public class AbstractFileSystemURL implements Closeable {
 		        .orElse(defaultValue);
 	}
 
-	public static Map<String, List<String>> splitURLQuery(final URL url) {
-		final var qList = Optional.ofNullable(url.getQuery())
-		        .map(q -> q.split("&"))
-		        .orElse(new String[0]);
-		return Arrays.stream(qList)
+	public static Stream<String> protectedSplit(final String text) {
+		final var list = new ArrayList<String>();
+		var isInEscape = false;
+		var data = new StringBuilder();
+		for (var pos = 0; pos < text.length(); pos++) {
+			final var chr = text.charAt(pos);
+			if (chr == '"') {
+				isInEscape = isInEscape == false;
+			} else if (isInEscape || chr == '&' == false) {
+				data.append(chr);
+			} else {
+				list.add(data.toString());
+				data = new StringBuilder();
+			}
+		}
+		if (data.length() > 0) {
+			list.add(data.toString());
+		}
+		return list.stream().filter(not(String::isEmpty));
+	}
+
+	static Map<String, List<String>> splitURLQuery(final URL url) {
+		final var qList = Optional.ofNullable(url.getQuery()).orElse("")
+		                  + Optional.ofNullable(url.getRef()).map(r -> "#" + r).orElse("");
+		return protectedSplit(qList)
 		        .map(it -> {
 			        final var idx = it.indexOf('=');
 			        final var key = idx > 0 ? it.substring(0, idx) : it;
@@ -177,8 +202,8 @@ public class AbstractFileSystemURL implements Closeable {
 		return port;
 	}
 
-	public static SimpleImmutableEntry<String, String> parseUserInfo(final String userInfo,
-	                                                                 final String defaultPassword) {
+	static SimpleImmutableEntry<String, String> parseUserInfo(final String userInfo,
+	                                                          final String defaultPassword) {
 		if (userInfo == null || userInfo.equals("")) {
 			return new SimpleImmutableEntry<>(null, defaultPassword);
 		}

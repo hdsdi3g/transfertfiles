@@ -16,6 +16,7 @@
  */
 package tv.hd3g.transfertfiles;
 
+import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static tv.hd3g.transfertfiles.AbstractFileSystemURL.parseUserInfo;
+import static tv.hd3g.transfertfiles.AbstractFileSystemURL.protectedSplit;
 import static tv.hd3g.transfertfiles.AbstractFileSystemURL.splitURLQuery;
 
 import java.io.File;
@@ -83,6 +85,27 @@ class AbstractFileSystemURLTest {
 			        splitURLQuery(new URL("http://host/?aa=b/b&c=d")));
 			assertEquals(Map.of("aa", List.of("b\\b"), "c", List.of("d")),
 			        splitURLQuery(new URL("http://host/?aa=b\\b&c=d")));
+
+			assertEquals(Map.of("aa", List.of("bb"), "c", List.of("d")),
+			        splitURLQuery(new URL("http://host/?aa=bb&c=\"d\"")));
+			assertEquals(Map.of("aa", List.of("bb"), "c", List.of("d&d")),
+			        splitURLQuery(new URL("http://host/?aa=bb&c=\"d&d\"")));
+			assertEquals(Map.of("aa", List.of("bb"),
+			        "c", List.of("o&o^o0:o?o|o+o0\\o=O,O#o0@;;o&!0-o_o~oo"),
+			        "ee", List.of("ff")),
+			        splitURLQuery(new URL("http://host/?aa=bb&c=\"o&o^o0:o?o|o+o0\\o=O,O#o0@;;o&!0-o_o~oo\"&ee=ff")));
+		}
+
+		@Test
+		void testProtectedSplit() {
+			assertEquals(List.of("aaa"), protectedSplit("aaa").collect(toUnmodifiableList()));
+			assertEquals(List.of("aaa", "bbb"), protectedSplit("aaa&bbb").collect(toUnmodifiableList()));
+			assertEquals(List.of("aaa", "bbb", "ccc"), protectedSplit("aaa&bbb&ccc").collect(toUnmodifiableList()));
+			assertEquals(List.of("aaabbbccc"), protectedSplit("aaa\"bbb\"ccc").collect(toUnmodifiableList()));
+			assertEquals(List.of("aaab&bccc"), protectedSplit("aaa\"b&b\"ccc").collect(toUnmodifiableList()));
+			assertEquals(List.of("aa", "ab&bc", "cc"), protectedSplit("aa&a\"b&b\"c&cc").collect(toUnmodifiableList()));
+			assertEquals(List.of("bbb"), protectedSplit("&bbb").collect(toUnmodifiableList()));
+			assertEquals(List.of("aaa"), protectedSplit("aaa&").collect(toUnmodifiableList()));
 		}
 
 		@Test
@@ -110,8 +133,8 @@ class AbstractFileSystemURLTest {
 			checkSimpleImmutableEntry(user + ":", defaultPassword, parseUserInfo(user + ":", defaultPassword));
 			checkSimpleImmutableEntry(null, ":" + password, parseUserInfo(":" + password, defaultPassword));
 			checkSimpleImmutableEntry(user, password, parseUserInfo(user + ":" + password, defaultPassword));
-			checkSimpleImmutableEntry(user, password + ":", parseUserInfo(user + ":" + password + ":",
-			        defaultPassword));
+			checkSimpleImmutableEntry(user, password + ":",
+			        parseUserInfo(user + ":" + password + ":", defaultPassword));
 			checkSimpleImmutableEntry(user, password + ":" + password,
 			        parseUserInfo(user + ":" + password + ":" + password, defaultPassword));
 		}
