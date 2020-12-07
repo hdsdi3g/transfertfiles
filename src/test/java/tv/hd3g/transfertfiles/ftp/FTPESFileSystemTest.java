@@ -17,6 +17,7 @@
 package tv.hd3g.transfertfiles.ftp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,7 +34,7 @@ class FTPESFileSystemTest {
 	int port;
 	String username;
 	String password;
-	FTPFileSystem fs;
+	FTPESFileSystem fs;
 
 	@BeforeEach
 	void init() throws UnknownHostException {
@@ -41,12 +42,24 @@ class FTPESFileSystemTest {
 		port = 21;
 		username = "testusr";
 		password = String.valueOf(System.nanoTime());
-		fs = new FTPESFileSystem(host, port, username, password.toCharArray(), true, "");
+		fs = new FTPESFileSystem(host, port, username, password.toCharArray(), true, false, "");
+	}
+
+	@Test
+	void testIsIgnoreInvalidCertificates() {
+		assertFalse(fs.isIgnoreInvalidCertificates());
+		fs = new FTPESFileSystem(host, port, username, password.toCharArray(), true, true, "");
+		assertTrue(fs.isIgnoreInvalidCertificates());
 	}
 
 	@Test
 	void testCreateFTPClient() {
-		final var client = fs.createFTPClient();
+		var client = fs.getClient();
+		assertNotNull(client);
+		assertTrue(client instanceof FTPSClient);
+
+		fs = new FTPSFileSystem(host, port, username, password.toCharArray(), true, true, "");
+		client = fs.getClient();
 		assertNotNull(client);
 		assertTrue(client instanceof FTPSClient);
 	}

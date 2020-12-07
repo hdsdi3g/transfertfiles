@@ -93,6 +93,8 @@ public class AbstractFileSystemURL implements Closeable {
 	 *        Never add directly an "&" in the password in query, but you can use " (quotation mark) like password="s&e?c=r+t"
 	 *        key password can be set by... set password
 	 *        FTP(S|ES) is passive by default.
+	 *        -
+	 *        Add "ignoreInvalidCertificates" to bypass TLS verification with FTPS/FTPES clients.
 	 */
 	public AbstractFileSystemURL(final String ressourceURL) {
 		try {
@@ -109,6 +111,7 @@ public class AbstractFileSystemURL implements Closeable {
 			final var password = passwordStr.toCharArray();
 
 			final var passive = query.containsKey("active") == false;
+			final var ignoreInvalidCertificates = query.containsKey("ignoreInvalidCertificates");
 			final var keys = query.getOrDefault("key", List.of()).stream()
 			        .map(File::new)
 			        .filter(File::exists)
@@ -134,10 +137,12 @@ public class AbstractFileSystemURL implements Closeable {
 				fileSystem = new FTPFileSystem(host, getPort(url, 21), username, password, passive, basePath);
 			} else if (protocol.contentEquals("ftps")) {
 				log.debug("Init URL FTPSFileSystem: {}", this::toString);
-				fileSystem = new FTPSFileSystem(host, getPort(url, 990), username, password, passive, basePath);
+				fileSystem = new FTPSFileSystem(host, getPort(url, 990), username, password, passive,
+				        ignoreInvalidCertificates, basePath);
 			} else if (protocol.contentEquals("ftpes")) {
 				log.debug("Init URL FTPESFileSystem: {}", this::toString);
-				fileSystem = new FTPESFileSystem(host, getPort(url, 21), username, password, passive, basePath);
+				fileSystem = new FTPESFileSystem(host, getPort(url, 21), username, password, passive,
+				        ignoreInvalidCertificates, basePath);
 			} else {
 				throw new IORuntimeException("Can't manage protocol \"" + protocol + "\" in URL: " + toString());
 			}

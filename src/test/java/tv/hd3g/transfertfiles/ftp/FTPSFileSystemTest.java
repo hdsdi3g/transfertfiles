@@ -41,12 +41,17 @@ class FTPSFileSystemTest {
 		port = 21;
 		username = "testusr";
 		password = String.valueOf(System.nanoTime());
-		fs = new FTPSFileSystem(host, port, username, password.toCharArray(), true, "");
+		fs = new FTPSFileSystem(host, port, username, password.toCharArray(), true, false, "");
 	}
 
 	@Test
 	void testCreateFTPClient() {
-		final var client = fs.createFTPClient();
+		var client = fs.getClient();
+		assertNotNull(client);
+		assertTrue(client instanceof FTPSClient);
+
+		fs = new FTPSFileSystem(host, port, username, password.toCharArray(), true, true, "");
+		client = fs.getClient();
 		assertNotNull(client);
 		assertTrue(client instanceof FTPSClient);
 	}

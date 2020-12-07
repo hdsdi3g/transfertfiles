@@ -24,20 +24,28 @@ import org.apache.commons.net.ftp.FTPSClient;
 /**
  * FTP TLS/SSL implicit client
  */
-public class FTPSFileSystem extends FTPFileSystem {
+public class FTPSFileSystem extends FTPESFileSystem {// NOSONAR S2160
+
+	private final FTPSClient client;
 
 	public FTPSFileSystem(final InetAddress host,
 	                      final int port,
 	                      final String username,
 	                      final char[] password,
 	                      final boolean passiveMode,
+	                      final boolean ignoreInvalidCertificates,
 	                      final String basePath) {
-		super(host, port, username, password, passiveMode, basePath);
+		super(host, port, username, password, passiveMode, ignoreInvalidCertificates, basePath);
+		if (ignoreInvalidCertificates) {
+			client = new FTPSClient(true, sslContextNeverCheck);
+		} else {
+			client = new FTPSClient(true);
+		}
 	}
 
 	@Override
-	protected FTPClient createFTPClient() {
-		return new FTPSClient(true);
+	public FTPClient getClient() {
+		return client;
 	}
 
 	@Override

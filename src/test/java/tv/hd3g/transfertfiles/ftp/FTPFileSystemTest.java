@@ -108,11 +108,6 @@ class FTPFileSystemTest {
 	}
 
 	@Test
-	void testCreateFTPClient() {
-		assertNotNull(fs.createFTPClient());
-	}
-
-	@Test
 	void testIsPassiveMode() {
 		assertTrue(fs.isPassiveMode());
 	}

@@ -38,10 +38,13 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 	protected final int port;
 	protected final String username;
 	private final char[] password;
-	private final FTPClient ftpClient;
 	private final boolean passiveMode;
 
 	private FTPListing ftpListing;
+	/**
+	 * Never use directly, prefer getClient (maybe overrided)
+	 */
+	private final FTPClient client;
 
 	public FTPFileSystem(final InetAddress host,
 	                     final int port,
@@ -59,12 +62,8 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 		this.password = Optional.ofNullable(password).orElse(new char[] {});
 		this.passiveMode = passiveMode;
 
+		client = new FTPClient();
 		log.debug("Init ftp client to {}", this);
-		ftpClient = createFTPClient();
-	}
-
-	protected FTPClient createFTPClient() {
-		return new FTPClient();
 	}
 
 	@Override
@@ -81,6 +80,7 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 		if (isAvaliable()) {
 			return;
 		}
+		final var ftpClient = getClient();
 		try {
 			log.debug("Start to connect to {}", this);
 			ftpClient.connect(host, port);
@@ -132,12 +132,13 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 
 	@Override
 	public boolean isAvaliable() {
-		return ftpClient.isAvailable();
+		return getClient().isAvailable();
 	}
 
 	@Override
 	public void close() {
 		try {
+			final var ftpClient = getClient();
 			if (ftpClient.isConnected()) {
 				log.info("Manually disconnect client for {}", this);
 				ftpClient.disconnect();
@@ -148,11 +149,12 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 	}
 
 	public FTPClient getClient() {
-		return ftpClient;
+		return client;
 	}
 
 	@Override
 	public int getIOBufferSize() {
+		final var ftpClient = getClient();
 		return IntStream.of(0x1000,
 		        ftpClient.getBufferSize(),
 		        ftpClient.getSendDataSocketBufferSize(),
