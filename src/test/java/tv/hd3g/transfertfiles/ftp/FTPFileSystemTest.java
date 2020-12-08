@@ -211,9 +211,9 @@ class FTPFileSystemTest {
 
 	@Test
 	void testToString() {
-		assertEquals("ftp://" + username + "@" + host + ":" + port + "/", fs.toString());
+		assertEquals("ftp://" + username + "@" + host.getHostName() + ":" + port + "/", fs.toString());
 		fs = new FTPFileSystem(host, port, username, noPassword, false, "");
-		assertEquals("ftp://" + username + "@" + host + ":" + port + "/", fs.toString());
+		assertEquals("ftp://" + username + "@" + host.getHostName() + ":" + port + "/", fs.toString());
 	}
 
 }

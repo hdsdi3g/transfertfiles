@@ -66,6 +66,6 @@ class FTPESFileSystemTest {
 
 	@Test
 	void testToString() {
-		assertEquals("ftpes://" + username + "@" + host + ":" + port + "/", fs.toString());
+		assertEquals("ftpes://" + username + "@" + host.getHostName() + ":" + port + "/", fs.toString());
 	}
 }

@@ -50,7 +50,7 @@ public class FTPSFileSystem extends FTPESFileSystem {// NOSONAR S2160
 
 	@Override
 	public String toString() {
-		return "ftps://" + username + "@" + host + ":" + port + getBasePath();
+		return "ftps://" + username + "@" + host.getHostName() + ":" + port + getBasePath();
 	}
 
 }

@@ -95,7 +95,7 @@ public class FTPESFileSystem extends FTPFileSystem {// NOSONAR S2160
 
 	@Override
 	public String toString() {
-		return "ftpes://" + username + "@" + host + ":" + port + getBasePath();
+		return "ftpes://" + username + "@" + host.getHostName() + ":" + port + getBasePath();
 	}
 
 	public boolean isIgnoreInvalidCertificates() {

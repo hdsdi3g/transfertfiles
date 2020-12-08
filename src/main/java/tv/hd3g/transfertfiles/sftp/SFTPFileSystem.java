@@ -96,7 +96,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 
 	@Override
 	public String toString() {
-		return "sftp://" + username + "@" + host + ":" + port + getBasePath();
+		return "sftp://" + username + "@" + host.getHostName() + ":" + port + getBasePath();
 	}
 
 	public void setPasswordAuth(final char[] password) {

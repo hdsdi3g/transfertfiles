@@ -418,7 +418,7 @@ class SFTPFileSystemTest {
 
 	@Test
 	void testToString() {
-		assertEquals("sftp://" + username + "@" + host + ":" + port + "/", fs.toString());
+		assertEquals("sftp://" + username + "@" + host.getHostName() + ":" + port + "/", fs.toString());
 	}
 
 }

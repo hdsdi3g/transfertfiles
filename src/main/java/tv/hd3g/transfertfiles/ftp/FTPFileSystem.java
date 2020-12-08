@@ -68,7 +68,7 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 
 	@Override
 	public String toString() {
-		return "ftp://" + username + "@" + host + ":" + port + getBasePath();
+		return "ftp://" + username + "@" + host.getHostName() + ":" + port + getBasePath();
 	}
 
 	public boolean isPassiveMode() {
