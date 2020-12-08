@@ -76,7 +76,7 @@ class FTPListingTest {
 		assertEquals(result, stream.findFirst().get());
 
 		Mockito.verify(client, Mockito.times(2)).listFiles(eq(path));
-		Mockito.verify(fileEntry, Mockito.times(1)).getName();
+		Mockito.verify(fileEntry, Mockito.times(2)).getName();
 	}
 
 	@Test
@@ -89,7 +89,7 @@ class FTPListingTest {
 		assertEquals(result, stream.findFirst().get());
 
 		Mockito.verify(client, Mockito.times(2)).mlistDir(eq(path));
-		Mockito.verify(fileEntry, Mockito.times(1)).getName();
+		Mockito.verify(fileEntry, Mockito.times(2)).getName();
 	}
 
 }

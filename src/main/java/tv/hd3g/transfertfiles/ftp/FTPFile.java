@@ -20,6 +20,7 @@ import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.apache.commons.io.FilenameUtils.getFullPathNoEndSeparator;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.DISTANTTOLOCAL;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.LOCALTODISTANT;
+import static tv.hd3g.transfertfiles.ftp.FTPListing.LIST;
 import static tv.hd3g.transfertfiles.ftp.FTPListing.MLSD;
 import static tv.hd3g.transfertfiles.ftp.FTPListing.NLST;
 import static tv.hd3g.transfertfiles.ftp.StoppableOutputStream.MANUALLY_STOP_WRITING;
@@ -183,8 +184,18 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 				        } else {
 					        return ftpL;
 				        }
-			        }).orElse(MLSD)
+			        }).orElseGet(() -> {
+				        try {
+					        if (ftpClient.hasFeature("MLSD")) {
+						        return MLSD;
+					        }
+				        } catch (final IOException e) {
+					        throw new IORuntimeException("Error during FTP  hasFeature", e);
+				        }
+				        return LIST;
+			        })
 			        .rawListDirectory(ftpClient, path)
+			        .peek(f -> log.trace("Raw toCachedList # {}", f))// NOSONAR S3864
 			        .filter(f -> f.getName().equalsIgnoreCase(getName()) == false)
 			        .map(f -> makeCachedFileAttributesFromFTPFileRaw(
 			                fileSystem.getFromPath(path + "/" + f.getName()), f));

@@ -18,6 +18,7 @@ package tv.hd3g.transfertfiles;
 
 import static java.io.File.separator;
 import static java.nio.charset.Charset.defaultCharset;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,6 +56,7 @@ import org.mockito.Mockito;
 
 import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection;
+import tv.hd3g.transfertfiles.ftp.FTPFileSystem;
 
 public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 
@@ -152,7 +154,16 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		assertEquals(f.isFile(), c.isFile());
 		assertEquals(f.isLink(), c.isLink());
 		assertEquals(f.isSpecial(), c.isSpecial());
-		assertEquals(f.lastModified(), c.lastModified());
+
+		if (f.getFileSystem() instanceof FTPFileSystem) {
+			/**
+			 * FTP NLST vs LIST precision, up to 1 min (round seconds)
+			 */
+			assertTrue(f.lastModified() - c.lastModified() <= MINUTES.toMillis(1));
+		} else {
+			assertEquals(f.lastModified(), c.lastModified());
+		}
+
 		if (f.isDirectory() == false) {
 			assertEquals(f.length(), c.length());
 		}
