@@ -29,7 +29,7 @@ public enum FTPListing {
 		@Override
 		Stream<String> listDirectory(final FTPClient ftpClient, final String path) throws IOException {
 			final var rawList = Optional.ofNullable(ftpClient.listNames(path)).orElse(new String[] {});
-			return Stream.of(rawList);
+			return Stream.of(rawList).filter(f -> f.endsWith(".") == false);
 		}
 
 		@Override
@@ -63,7 +63,7 @@ public enum FTPListing {
 	private static Stream<org.apache.commons.net.ftp.FTPFile> rawFTPFileListToStream(final org.apache.commons.net.ftp.FTPFile[] rawList) {
 		final var protectedList = Optional.ofNullable(rawList)
 		        .orElse(new org.apache.commons.net.ftp.FTPFile[] {});
-		return Stream.of(protectedList);
+		return Stream.of(protectedList).filter(f -> f.getName().endsWith(".") == false);
 	}
 
 	abstract Stream<String> listDirectory(final FTPClient ftpClient, final String path) throws IOException;
