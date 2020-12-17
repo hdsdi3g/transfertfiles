@@ -16,29 +16,18 @@
  */
 package tv.hd3g.transfertfiles;
 
-import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static tv.hd3g.transfertfiles.AbstractFileSystemURL.parseUserInfo;
-import static tv.hd3g.transfertfiles.AbstractFileSystemURL.protectedSplit;
-import static tv.hd3g.transfertfiles.AbstractFileSystemURL.splitURLQuery;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.AbstractMap.SimpleImmutableEntry;
-import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,98 +44,6 @@ import tv.hd3g.transfertfiles.local.LocalFileSystem;
 import tv.hd3g.transfertfiles.sftp.SFTPFileSystem;
 
 class AbstractFileSystemURLTest {
-
-	@Nested
-	class Specific {
-
-		@Test
-		void testURL() throws MalformedURLException {
-			var u = new URL("http://user:password@host/path?aa=bb");
-			assertEquals("http", u.getProtocol());
-			assertEquals("user:password", u.getUserInfo());
-			assertEquals("host", u.getHost());
-			assertEquals("/path", u.getPath());
-			assertEquals("aa=bb", u.getQuery());
-
-			u = new URL("http://user:password@host/");
-			assertEquals("/", u.getPath());
-			assertNull(u.getQuery());
-
-			// URLDecoder.decode(proxyRequestParam.replace("+", "%2B"), "UTF-8") .replace("%2B", "+")
-			u = new URL("http://host/?aa=bb");
-			assertEquals("/", u.getPath());
-			assertEquals("aa=bb", u.getQuery());
-
-			assertEquals(Map.of("aa", List.of("bb")), splitURLQuery(new URL("http://host/?aa=bb")));
-			assertEquals(Map.of("aa", List.of("b b")), splitURLQuery(new URL("http://host/?aa=b b")));
-			assertEquals(Map.of("aa", List.of("b b"), "c", List.of("d")),
-			        splitURLQuery(new URL("http://host/?aa=b b&c=d")));
-			assertEquals(Map.of("aa", List.of("b/b"), "c", List.of("d")),
-			        splitURLQuery(new URL("http://host/?aa=b/b&c=d")));
-			assertEquals(Map.of("aa", List.of("b\\b"), "c", List.of("d")),
-			        splitURLQuery(new URL("http://host/?aa=b\\b&c=d")));
-
-			assertEquals(Map.of("aa", List.of("bb"), "c", List.of("d")),
-			        splitURLQuery(new URL("http://host/?aa=bb&c=\"d\"")));
-			assertEquals(Map.of("aa", List.of("bb"), "c", List.of("d&d")),
-			        splitURLQuery(new URL("http://host/?aa=bb&c=\"d&d\"")));
-			assertEquals(Map.of("aa", List.of("bb"),
-			        "c", List.of("o&o^o0:o?o|o+o0\\o=O,O#o0@;;o&!0-o_o~oo"),
-			        "ee", List.of("ff")),
-			        splitURLQuery(new URL("http://host/?aa=bb&c=\"o&o^o0:o?o|o+o0\\o=O,O#o0@;;o&!0-o_o~oo\"&ee=ff")));
-		}
-
-		@Test
-		void testProtectedSplit() {
-			assertEquals(List.of("aaa"), protectedSplit("aaa").collect(toUnmodifiableList()));
-			assertEquals(List.of("aaa", "bbb"), protectedSplit("aaa&bbb").collect(toUnmodifiableList()));
-			assertEquals(List.of("aaa", "bbb", "ccc"), protectedSplit("aaa&bbb&ccc").collect(toUnmodifiableList()));
-			assertEquals(List.of("aaabbbccc"), protectedSplit("aaa\"bbb\"ccc").collect(toUnmodifiableList()));
-			assertEquals(List.of("aaab&bccc"), protectedSplit("aaa\"b&b\"ccc").collect(toUnmodifiableList()));
-			assertEquals(List.of("aa", "ab&bc", "cc"), protectedSplit("aa&a\"b&b\"c&cc").collect(toUnmodifiableList()));
-			assertEquals(List.of("bbb"), protectedSplit("&bbb").collect(toUnmodifiableList()));
-			assertEquals(List.of("aaa"), protectedSplit("aaa&").collect(toUnmodifiableList()));
-		}
-
-		@Test
-		void testSpecificURL() throws MalformedURLException {
-			AbstractFileSystemURL.class.getName();
-			assertEquals("sftp", new URL("sftp://host").getProtocol());
-			assertEquals("ftp", new URL("ftp://host").getProtocol());
-			assertEquals("ftps", new URL("ftps://host").getProtocol());
-			assertEquals("ftpes", new URL("ftpes://host").getProtocol());
-			assertThrows(MalformedURLException.class, () -> new URL("noset://host"));
-
-			final var u = new URL("sftp://host");
-			assertThrows(IllegalAccessError.class, () -> u.openConnection());
-		}
-
-		@Test
-		void testParseUserInfo() {
-			final var defaultPassword = String.valueOf(System.nanoTime());
-			final var user = String.valueOf(System.nanoTime());
-			final var password = String.valueOf(System.nanoTime());
-
-			checkSimpleImmutableEntry(null, defaultPassword, parseUserInfo(null, defaultPassword));
-			checkSimpleImmutableEntry(null, defaultPassword, parseUserInfo("", defaultPassword));
-			checkSimpleImmutableEntry(user, defaultPassword, parseUserInfo(user, defaultPassword));
-			checkSimpleImmutableEntry(user + ":", defaultPassword, parseUserInfo(user + ":", defaultPassword));
-			checkSimpleImmutableEntry(null, ":" + password, parseUserInfo(":" + password, defaultPassword));
-			checkSimpleImmutableEntry(user, password, parseUserInfo(user + ":" + password, defaultPassword));
-			checkSimpleImmutableEntry(user, password + ":",
-			        parseUserInfo(user + ":" + password + ":", defaultPassword));
-			checkSimpleImmutableEntry(user, password + ":" + password,
-			        parseUserInfo(user + ":" + password + ":" + password, defaultPassword));
-		}
-
-		private void checkSimpleImmutableEntry(final String k,
-		                                       final String v,
-		                                       final SimpleImmutableEntry<String, String> entry) {
-			assertNotNull(entry);
-			assertEquals(k, entry.getKey(), "Invalid key");
-			assertEquals(v, entry.getValue(), "Invalid value");
-		}
-	}
 
 	AbstractFileSystemURL afs;
 
