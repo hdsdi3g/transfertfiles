@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.ftpserver.FtpServerFactory;
@@ -214,6 +215,17 @@ class FTPFileSystemTest {
 		assertEquals("ftp://" + username + "@" + host.getHostName() + ":" + port + "/", fs.toString());
 		fs = new FTPFileSystem(host, port, username, noPassword, false, "");
 		assertEquals("ftp://" + username + "@" + host.getHostName() + ":" + port + "/", fs.toString());
+	}
+
+	@Test
+	void testTimeout() {
+		fs.setTimeout(2000, TimeUnit.MILLISECONDS);
+		fs.connect();
+		final var client = fs.getClient();
+		assertEquals(fs.getTimeout(), client.getConnectTimeout());
+		assertEquals(fs.getTimeout(), client.getControlKeepAliveReplyTimeout());
+		assertEquals(fs.getTimeout(), client.getControlKeepAliveTimeout());
+		assertEquals(fs.getTimeout(), client.getDefaultTimeout());
 	}
 
 }

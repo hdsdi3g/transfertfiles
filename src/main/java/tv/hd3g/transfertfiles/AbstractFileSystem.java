@@ -17,6 +17,7 @@
 package tv.hd3g.transfertfiles;
 
 import java.io.Closeable;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Expected to be thread safe.
@@ -33,6 +34,12 @@ public interface AbstractFileSystem<T extends AbstractFile> extends Closeable {
 	 */
 	default int getIOBufferSize() {
 		return 0xFFFF;
+	}
+
+	/**
+	 * Set socket/connection timeout.
+	 */
+	default void setTimeout(final long duration, final TimeUnit unit) {
 	}
 
 	/**

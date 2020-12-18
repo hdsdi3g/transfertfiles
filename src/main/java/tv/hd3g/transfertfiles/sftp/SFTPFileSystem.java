@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
@@ -169,6 +170,17 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 	}
 
 	@Override
+	public void setTimeout(final long duration, final TimeUnit unit) {
+		if (duration > 0) {
+			timeoutDuration = unit.toMillis(duration);
+		}
+		if (timeoutDuration > Integer.MAX_VALUE) {
+			throw new IllegalArgumentException("Can't set a timeoutDuration > Integer.MAX_VALUE: "
+			                                   + timeoutDuration);
+		}
+	}
+
+	@Override
 	public synchronized void connect() {
 		if (isAvaliable()) {
 			return;
@@ -177,6 +189,11 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 		}
 		log.debug("Start to connect to {}", this);
 		wasConnected = true;
+
+		if (timeoutDuration > 0) {
+			client.setConnectTimeout((int) timeoutDuration);
+			client.setTimeout((int) timeoutDuration);
+		}
 		try {
 			client.connect(host, port);
 			if (password != null && password.length > 0) {

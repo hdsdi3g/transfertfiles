@@ -16,6 +16,7 @@
  */
 package tv.hd3g.transfertfiles;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static tv.hd3g.transfertfiles.AbstractFile.normalizePath;
 
@@ -56,12 +57,15 @@ public class AbstractFileSystemURL implements Closeable {
 	 * @param ressourceURL like "protocol://user:password@host/basePath?password=secret&active&key=/path/to/privateOpenSSHkey"
 	 *        query must not be encoded
 	 *        use ":password" or "password=" as you want.
-	 *        Never set an "@" in the user:password place. Quotation mark here are ignored (simply used as quotation marks).
+	 *        Never set an "?" in the user:password place. Quotation mark here are ignored (simply used as quotation marks).
 	 *        Never add directly an "&" in the password in query, but you can use " (quotation mark) like password="s&e?c=r+t"
 	 *        key password can be set by... set password
+	 *        -
 	 *        FTP(S|ES) is passive by default.
 	 *        -
 	 *        Add "ignoreInvalidCertificates" to bypass TLS verification with FTPS/FTPES clients.
+	 *        --
+	 *        Add "timeout=5" for set 5 seconds of connect/socket timeout
 	 */
 	public AbstractFileSystemURL(final String ressourceURL) {
 		try {
@@ -111,6 +115,14 @@ public class AbstractFileSystemURL implements Closeable {
 				        ignoreInvalidCertificates, basePath);
 			} else {
 				throw new IORuntimeException("Can't manage protocol \"" + protocol + "\" in URL: " + toString());
+			}
+
+			final var timeout = query.getOrDefault("timeout", List.of()).stream()
+			        .map(Integer::valueOf)
+			        .findFirst()
+			        .orElse(0);
+			if (timeout > 0) {
+				fileSystem.setTimeout(timeout, SECONDS);
 			}
 		} catch (final UnknownHostException e) {
 			throw new IORuntimeException("Invalid URL host: \"" + toString() + "\"", e);

@@ -81,6 +81,14 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 			return;
 		}
 		final var ftpClient = getClient();
+
+		if (timeoutDuration > 0) {
+			client.setConnectTimeout((int) timeoutDuration);
+			client.setControlKeepAliveReplyTimeout((int) timeoutDuration);
+			client.setControlKeepAliveTimeout(timeoutDuration);
+			client.setDefaultTimeout((int) timeoutDuration);
+			client.setDataTimeout((int) timeoutDuration);
+		}
 		try {
 			log.debug("Start to connect to {}", this);
 			ftpClient.connect(host, port);

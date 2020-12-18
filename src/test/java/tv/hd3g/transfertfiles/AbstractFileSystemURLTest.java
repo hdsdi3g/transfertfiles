@@ -19,6 +19,7 @@ package tv.hd3g.transfertfiles;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -125,6 +126,32 @@ class AbstractFileSystemURLTest {
 		assertEquals("ftpes://user:*******@localhost/?password=*******", afs.toString());
 		afs = new AbstractFileSystemURL("ftpes://user@localhost/?password=sec:ret");
 		assertEquals("ftpes://user@localhost/?password=*******", afs.toString());
+	}
+
+	@Test
+	void testSetTimeout() {
+		afs = new AbstractFileSystemURL("file://localhost/" + new File("").getAbsolutePath() + "?timeout=6");
+		final var fs = afs.getFileSystem();
+		assertNotNull(fs);
+		assertTrue(fs instanceof CommonAbstractFileSystem);
+		final var cfs = (CommonAbstractFileSystem<?>) fs;
+		assertEquals(6000, cfs.timeoutDuration);
+	}
+
+	@Test
+	void testNotSetTimeout() {
+		afs = new AbstractFileSystemURL("file://localhost/" + new File("").getAbsolutePath());
+		final var fs = afs.getFileSystem();
+		assertNotNull(fs);
+		assertTrue(fs instanceof CommonAbstractFileSystem);
+		final var cfs = (CommonAbstractFileSystem<?>) fs;
+		assertEquals(0, cfs.timeoutDuration);
+	}
+
+	@Test
+	void testSetInvalidTimeout() {
+		final var url = "file://localhost/" + new File("").getAbsolutePath() + "?timeout=NOPE";
+		assertThrows(NumberFormatException.class, () -> new AbstractFileSystemURL(url));
 	}
 
 	static class TestAbstractFileSystemURL extends AbstractFileSystemURL {

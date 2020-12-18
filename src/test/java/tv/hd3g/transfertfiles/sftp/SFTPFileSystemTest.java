@@ -37,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory;
@@ -419,6 +420,16 @@ class SFTPFileSystemTest {
 	@Test
 	void testToString() {
 		assertEquals("sftp://" + username + "@" + host.getHostName() + ":" + port + "/", fs.toString());
+	}
+
+	@Test
+	void testTimeout() {
+		fs.setTimeout(2000, TimeUnit.MILLISECONDS);
+		fs.setPasswordAuth(password.toCharArray());
+		fs.connect();
+		final var client = fs.getClient();
+		assertEquals(fs.getTimeout(), client.getConnectTimeout());
+		assertEquals(fs.getTimeout(), client.getTimeout());
 	}
 
 }

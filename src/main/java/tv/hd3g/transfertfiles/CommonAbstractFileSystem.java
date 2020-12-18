@@ -19,13 +19,16 @@ package tv.hd3g.transfertfiles;
 import static tv.hd3g.transfertfiles.AbstractFile.normalizePath;
 
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public abstract class CommonAbstractFileSystem<T extends AbstractFile> implements AbstractFileSystem<T> {
 
 	private final String basePath;
+	protected long timeoutDuration;
 
 	protected CommonAbstractFileSystem(final String basePath) {
 		this.basePath = normalizePath(Objects.requireNonNull(basePath, "basePath"));
+		timeoutDuration = 0;
 	}
 
 	protected String getPathFromRelative(final String path) {
@@ -56,4 +59,20 @@ public abstract class CommonAbstractFileSystem<T extends AbstractFile> implement
 		return Objects.equals(basePath, other.basePath);
 	}
 
+	@Override
+	public void setTimeout(final long duration, final TimeUnit unit) {
+		if (duration > 0) {
+			timeoutDuration = unit.toMillis(duration);
+		} else {
+			throw new IllegalArgumentException("Can't set a timeoutDuration to " + timeoutDuration);
+		}
+		if (timeoutDuration > Integer.MAX_VALUE) {
+			throw new IllegalArgumentException("Can't set a timeoutDuration > Integer.MAX_VALUE: "
+			                                   + timeoutDuration);
+		}
+	}
+
+	public long getTimeout() {
+		return timeoutDuration;
+	}
 }

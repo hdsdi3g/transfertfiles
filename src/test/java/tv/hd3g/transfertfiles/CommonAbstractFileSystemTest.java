@@ -16,10 +16,12 @@
  */
 package tv.hd3g.transfertfiles;
 
+import static java.util.concurrent.TimeUnit.DAYS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,6 +63,22 @@ class CommonAbstractFileSystemTest {
 	@Test
 	void testGetBasePath() {
 		assertEquals("/" + basePath, cafs.getBasePath());
+	}
+
+	@Test
+	void testSetTimeout() {
+		cafs.setTimeout(10, DAYS);
+		assertEquals(DAYS.toMillis(10), cafs.timeoutDuration);
+		assertThrows(IllegalArgumentException.class, () -> cafs.setTimeout(-10, DAYS));
+		assertThrows(IllegalArgumentException.class, () -> cafs.setTimeout(0, DAYS));
+		assertThrows(IllegalArgumentException.class, () -> cafs.setTimeout(2 ^ 30, DAYS));
+	}
+
+	@Test
+	void testGetTimeout() {
+		assertEquals(0, cafs.getTimeout());
+		cafs.setTimeout(10, DAYS);
+		assertEquals(TimeUnit.DAYS.toMillis(10), cafs.getTimeout());
 	}
 
 	static class TestCAFS extends CommonAbstractFileSystem<AbstractFile> {
