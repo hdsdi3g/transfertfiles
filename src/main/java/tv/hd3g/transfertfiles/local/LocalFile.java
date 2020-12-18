@@ -152,22 +152,22 @@ public class LocalFile extends CommonAbstractFile<LocalFileSystem> {// NOSONAR S
 
 	@Override
 	public boolean isDirectory() {
-		return internalFile.isDirectory();
+		return internalFile.isDirectory() && internalFile.canRead();
 	}
 
 	@Override
 	public boolean isFile() {
-		return internalFile.isFile();
+		return internalFile.isFile() && internalFile.canRead();
 	}
 
 	@Override
 	public boolean isLink() {
-		return FileUtils.isSymlink(internalFile);
+		return FileUtils.isSymlink(internalFile) && internalFile.canRead();
 	}
 
 	@Override
 	public boolean isSpecial() {
-		if (exists() == false) {
+		if (internalFile.exists() == false) {
 			return false;
 		}
 		try {
