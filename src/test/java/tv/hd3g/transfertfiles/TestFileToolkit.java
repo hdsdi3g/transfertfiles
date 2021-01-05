@@ -28,20 +28,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.longThat;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.DISTANTTOLOCAL;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.LOCALTODISTANT;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -52,6 +60,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import tv.hd3g.commons.IORuntimeException;
@@ -64,12 +73,17 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 
 	static final LinkedBlockingQueue<AbstractFileSystem<?>> createdFS = new LinkedBlockingQueue<>();
 	static File root;
+	static Random random;
 
 	@BeforeAll
 	static void initBaseWorkingDir() throws IOException {
 		root = new File("target/testfs");
 		FileUtils.forceMkdir(root);
+		Stream.of(root.listFiles())
+		        .forEach(f -> f.setWritable(true));
+
 		FileUtils.cleanDirectory(root);
+		random = new Random();
 	}
 
 	@AfterAll
@@ -82,6 +96,9 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 			}
 		});
 		createdFS.clear();
+
+		Stream.of(root.listFiles())
+		        .forEach(f -> f.setWritable(true));
 		FileUtils.cleanDirectory(root);
 	}
 
@@ -542,6 +559,105 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 
 				        final var f = fs.getFromPath("transfertSource");
 				        testAction.execute(f);
+			        });
+		});
+	}
+
+	@TestFactory
+	final Stream<DynamicNode> testUpDownAbstract() throws IOException {
+		final var baseName = "fileForUpDown";
+		final var file = new File(root, baseName).getAbsoluteFile();
+		final var fs = createFileSystem();
+		createdFS.add(fs);
+
+		final var copyCallback = Mockito.mock(SizedStoppableCopyCallback.class);
+		final var bufferSize = 40_000;
+		final var sourceDatas = new byte[bufferSize * LOOP_COPIES_BUFFER];
+
+		final Map<String, Executable1<AbstractFile>> tests = new LinkedHashMap<>();
+		tests.put("testUploadAbstract", f -> {
+			assertFalse(file.exists());
+
+			final var inputStream = new ByteArrayInputStream(sourceDatas);
+			final var copied = f.uploadAbstract(inputStream, bufferSize, copyCallback);
+
+			assertEquals(sourceDatas.length, copied);
+
+			verify(copyCallback, atLeastOnce())
+			        .apply(longThat(l -> l > 0 && l <= copied));
+			verify(copyCallback, times(1)).apply(eq(copied));
+
+			assertTrue(file.exists());
+			assertTrue(f.exists());
+			assertTrue(Arrays.equals(sourceDatas, FileUtils.readFileToByteArray(file)));
+		});
+		tests.put("testUploadAbstract_stop", f -> {
+			assertFalse(file.exists());
+
+			when(copyCallback.apply(anyLong())).thenReturn(true, false);
+
+			final var inputStream = new ByteArrayInputStream(sourceDatas);
+			final var copied = f.uploadAbstract(inputStream, bufferSize, copyCallback);
+
+			assertTrue(sourceDatas.length > copied);
+			verify(copyCallback, atLeastOnce()).apply(argThat(l -> l > 0 && l < copied));
+			verify(copyCallback, times(1)).apply(eq(copied));
+
+			assertTrue(file.exists());
+			assertTrue(f.exists());
+			assertTrue(Arrays.equals(sourceDatas, 0, (int) copied,
+			        FileUtils.readFileToByteArray(file), 0, (int) copied));
+		});
+		tests.put("testDownloadAbstract", f -> {
+			assertFalse(file.exists());
+			FileUtils.writeByteArrayToFile(file, sourceDatas);
+			assertTrue(file.exists());
+
+			final var outputStream = new ByteArrayOutputStream();
+			final var copied = f.downloadAbstract(outputStream, bufferSize, copyCallback);
+
+			assertEquals(sourceDatas.length, copied);
+
+			verify(copyCallback, atLeastOnce())
+			        .apply(ArgumentMatchers.longThat(l -> l > 0 && l <= copied));
+			verify(copyCallback, times(1)).apply(eq(copied));
+
+			assertTrue(Arrays.equals(sourceDatas, outputStream.toByteArray()));
+		});
+		tests.put("testDownloadAbstract_stop", f -> {
+			assertFalse(file.exists());
+			FileUtils.writeByteArrayToFile(file, sourceDatas);
+			assertTrue(file.exists());
+
+			when(copyCallback.apply(anyLong())).thenReturn(true, false);
+
+			final var outputStream = new ByteArrayOutputStream();
+			final var copied = f.downloadAbstract(outputStream, bufferSize, copyCallback);
+
+			assertTrue(sourceDatas.length > copied);
+			verify(copyCallback, atLeastOnce()).apply(argThat(l -> l > 0 && l < copied));
+			verify(copyCallback, times(1)).apply(eq(copied));
+
+			assertTrue(Arrays.equals(sourceDatas, 0, (int) copied,
+			        outputStream.toByteArray(), 0, (int) copied));
+		});
+
+		return tests.entrySet().stream().map(entry -> {
+			final var testName = entry.getKey();
+			final var testAction = entry.getValue();
+			return dynamicTest(testName,
+			        () -> {
+				        reset(copyCallback);
+				        when(copyCallback.apply(anyLong())).thenReturn(true);
+				        random.nextBytes(sourceDatas);
+				        if (file.exists()) {
+					        file.setWritable(true);
+				        }
+
+				        FileUtils.cleanDirectory(root);
+				        final var f = fs.getFromPath(baseName);
+				        testAction.execute(f);
+				        verifyNoMoreInteractions(copyCallback);
 			        });
 		});
 	}

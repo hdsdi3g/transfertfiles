@@ -31,9 +31,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -51,6 +54,7 @@ import tv.hd3g.transfertfiles.AbstractFileSystem;
 import tv.hd3g.transfertfiles.CachedFileAttributes;
 import tv.hd3g.transfertfiles.CannotDeleteException;
 import tv.hd3g.transfertfiles.CommonAbstractFile;
+import tv.hd3g.transfertfiles.SizedStoppableCopyCallback;
 import tv.hd3g.transfertfiles.TransfertObserver;
 import tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection;
 
@@ -434,4 +438,63 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 		}
 	}
 
+	@Override
+	public long downloadAbstract(final OutputStream outputStream,
+	                             final int bufferSize,
+	                             final SizedStoppableCopyCallback copyCallback) {
+		var copied = 0L;
+		try (var inputStream = ftpClient.retrieveFileStream(getName())) {
+			final var continueStatus = new AtomicBoolean(false);
+			final SizedStoppableCopyCallback catchCallBack = size -> {
+				final var continueCopy = copyCallback.apply(size);
+				continueStatus.set(continueCopy);
+				return continueCopy;
+			};
+			copied = observableCopyStream(inputStream, outputStream, bufferSize, catchCallBack);
+
+			if (continueStatus.get() == false) {
+				ftpClient.abort();
+			}
+		} catch (final IOException e) {
+			throw new IORuntimeException(e);
+		} finally {
+			try {
+				outputStream.close();
+			} catch (final IOException e) {
+				log.error("Can't close provided outputStream after use", e);
+			}
+		}
+		checkCompletePendingCommand("FTP download error: ");
+		return copied;
+	}
+
+	@Override
+	public long uploadAbstract(final InputStream inputStream,
+	                           final int bufferSize,
+	                           final SizedStoppableCopyCallback copyCallback) {
+		var copied = 0L;
+		try (var outputStream = ftpClient.storeFileStream(getName())) {
+			copied = observableCopyStream(inputStream, outputStream, bufferSize, copyCallback);
+		} catch (final IOException e) {
+			throw new IORuntimeException(e);
+		} finally {
+			try {
+				inputStream.close();
+			} catch (final IOException e) {
+				log.error("Can't close provided inputStream after use", e);
+			}
+		}
+		checkCompletePendingCommand("FTP upload error: ");
+		return copied;
+	}
+
+	private void checkCompletePendingCommand(final String message) {
+		try {
+			if (ftpClient.completePendingCommand() == false) {
+				throw new IORuntimeException(message + ftpClient.getReplyString());
+			}
+		} catch (final IOException e) {
+			throw new IORuntimeException(e);
+		}
+	}
 }

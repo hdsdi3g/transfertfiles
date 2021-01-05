@@ -18,6 +18,7 @@ package tv.hd3g.transfertfiles.local;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -122,4 +123,15 @@ class LocalFileSystemTest {
 		assertTrue(str.startsWith("file://"));
 		assertTrue(str.endsWith(compare));
 	}
+
+	@Test
+	void testReusableHashCode() {
+		final var code0 = fs.reusableHashCode();
+		assertNotEquals(0, code0);
+		final var lfs = new LocalFileSystem(root);
+		assertEquals(code0, lfs.reusableHashCode());
+
+		lfs.close();
+	}
+
 }

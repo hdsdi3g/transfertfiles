@@ -211,4 +211,8 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 		return Objects.equals(host, other.host) && port == other.port && Objects.equals(username, other.username);
 	}
 
+	@Override
+	public int reusableHashCode() {
+		return getClient().hashCode();
+	}
 }

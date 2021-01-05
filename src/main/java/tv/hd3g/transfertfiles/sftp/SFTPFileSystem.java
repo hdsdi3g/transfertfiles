@@ -290,4 +290,11 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 		       && Objects.equals(username, other.username);
 	}
 
+	@Override
+	public int reusableHashCode() {
+		if (sftpClient == null) {
+			throw new IllegalStateException("Please connect before get reusableHashCode");
+		}
+		return sftpClient.hashCode();
+	}
 }

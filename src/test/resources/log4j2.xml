@@ -1,28 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
-	
+
 	<Appenders>
 		<Console name="Console OUT" target="SYSTEM_OUT" follow="true">
 			<PatternLayout pattern="%d{ISO8601} %-5p %c{1} &#8249;%t&#8250;&#9;&#8220;%m&#8221;%n &#8227; %C.%M(%F:%L)%n%n" />
-		    <ThresholdFilter level="WARN" onMatch="DENY" onMismatch="NEUTRAL"/>
+			<ThresholdFilter level="WARN" onMatch="DENY" onMismatch="NEUTRAL" />
 		</Console>
 
 		<Console name="Console ERR" target="SYSTEM_ERR" follow="true">
 			<PatternLayout pattern="%d{ISO8601} %-5p %c{1} &#8249;%t&#8250;&#9;&#8220;%m&#8221;%n &#8227; %C.%M(%F:%L)%n%n" />
-		    <ThresholdFilter level="WARN"/>
+			<ThresholdFilter level="WARN" />
 		</Console>
+
+		<Console name="Console LIGHT" target="SYSTEM_OUT" follow="true">
+			<PatternLayout pattern="%m%n" />
+		</Console>
+
 	</Appenders>
-	
+
 	<Loggers>
 		<Logger name="tv.hd3g" level="warn" />
-        <Logger name="net.schmizz.sshj.xfer.FileSystemFile" level="error" />
-        <Logger name="net.schmizz.sshj.transport.TransportImpl" level="fatal" />
-        <Logger name="org.apache.ftpserver" level="error" />
+		<Logger name="net.schmizz.sshj.xfer.FileSystemFile" level="error" />
+		<Logger name="net.schmizz.sshj.transport.TransportImpl" level="fatal" />
+		<Logger name="org.apache.ftpserver" level="error" />
+		
+		<!-- Logger name="tv.hd3g.transfertfiles.DataExchangeInOutStream" level="trace" additivity="false">
+            <AppenderRef ref="Console LIGHT" />
+		</Logger -->
 
 		<Root level="warn">
 			<AppenderRef ref="Console OUT" />
 			<AppenderRef ref="Console ERR" />
 		</Root>
 	</Loggers>
-	
+
 </Configuration>

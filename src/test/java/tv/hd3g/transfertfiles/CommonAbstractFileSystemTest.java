@@ -110,5 +110,9 @@ class CommonAbstractFileSystemTest {
 		public void close() throws IOException {
 		}
 
+		@Override
+		public int reusableHashCode() {
+			return 0;
+		}
 	}
 }

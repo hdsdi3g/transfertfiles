@@ -138,4 +138,8 @@ public class LocalFileSystem extends CommonAbstractFileSystem<LocalFile> {
 		return "file://" + hostName + AbstractFile.normalizePath(getBasePath() + rPath);
 	}
 
+	@Override
+	public int reusableHashCode() {
+		return relativePath.hashCode();
+	}
 }

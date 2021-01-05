@@ -22,7 +22,11 @@ import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.LOCALT
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
@@ -33,6 +37,9 @@ import net.schmizz.sshj.sftp.FileAttributes;
 import net.schmizz.sshj.sftp.FileMode.Type;
 import net.schmizz.sshj.sftp.RemoteResourceInfo;
 import net.schmizz.sshj.sftp.SFTPClient;
+import net.schmizz.sshj.xfer.LocalDestFile;
+import net.schmizz.sshj.xfer.LocalFileFilter;
+import net.schmizz.sshj.xfer.LocalSourceFile;
 import net.schmizz.sshj.xfer.TransferListener;
 import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.AbstractFile;
@@ -40,6 +47,7 @@ import tv.hd3g.transfertfiles.AbstractFileSystem;
 import tv.hd3g.transfertfiles.CachedFileAttributes;
 import tv.hd3g.transfertfiles.CannotDeleteException;
 import tv.hd3g.transfertfiles.CommonAbstractFile;
+import tv.hd3g.transfertfiles.SizedStoppableCopyCallback;
 import tv.hd3g.transfertfiles.TransfertObserver;
 import tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection;
 
@@ -241,8 +249,8 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 	private class StoppedTransfertException extends IOException {
 		private final long transferred;
 
-		public StoppedTransfertException(final File localFile, final long transferred) {
-			super("Observer has stopped the transfert of " + localFile.getPath());
+		public StoppedTransfertException(final String source, final long transferred) {
+			super("Observer has stopped the transfert of " + source);
 			this.transferred = transferred;
 		}
 	}
@@ -265,7 +273,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 						return transferred -> {
 							if (observer.onTransfertProgress(
 							        localFile, thisRef, transfertDirection, now, transferred) == false) {
-								throw new StoppedTransfertException(localFile, transferred);
+								throw new StoppedTransfertException(localFile.getPath(), transferred);
 							}
 						};
 					}
@@ -302,6 +310,206 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		} catch (final IOException e) {
 			throw new IORuntimeException(e);
 		}
+	}
+
+	@Override
+	public long downloadAbstract(final OutputStream outputStream,
+	                             final int bufferSize,
+	                             final SizedStoppableCopyCallback copyCallback) {
+		final var dest = new LocalDestFileImpl(outputStream, copyCallback);
+		synchronized (sftpClient) {
+			try {
+				sftpClient.getFileTransfer().setTransferListener(dest);
+				sftpClient.get(path, dest);
+			} catch (final StoppedTransfertException e) {
+				log.debug("Manually stop ssh download", e);
+			} catch (final IOException e) {
+				throw new IORuntimeException(e);
+			} finally {
+				sftpClient.getFileTransfer().setTransferListener(null);
+				try {
+					outputStream.close();
+				} catch (final IOException e) {
+					log.error("Can't close provided outputStream after use", e);
+				}
+			}
+		}
+
+		return dest.getTotalSize();
+
+	}
+
+	@Override
+	public long uploadAbstract(final InputStream inputStream,
+	                           final int bufferSize,
+	                           final SizedStoppableCopyCallback copyCallback) {
+		final var source = new LocalSourceFileImpl(getName(), inputStream, copyCallback);
+		synchronized (sftpClient) {
+			try {
+				sftpClient.getFileTransfer().setTransferListener(source);
+				sftpClient.put(source, path);
+			} catch (final StoppedTransfertException e) {
+				log.debug("Manually stop ssh upload", e);
+			} catch (final IOException e) {
+				throw new IORuntimeException(e);
+			} finally {
+				sftpClient.getFileTransfer().setTransferListener(null);
+				try {
+					inputStream.close();
+				} catch (final IOException e) {
+					log.error("Can't close provided inputStream after use", e);
+				}
+			}
+		}
+
+		return source.getTotalSize();
+	}
+
+	private class TransferListenerImpl implements TransferListener {
+		private final SizedStoppableCopyCallback copyCallback;
+		private final AtomicLong totalSize;
+
+		TransferListenerImpl(final SizedStoppableCopyCallback copyCallback) {
+			this.copyCallback = copyCallback;
+			totalSize = new AtomicLong();
+		}
+
+		@Override
+		public Listener file(final String name, final long size) {
+			return transferred -> {
+				totalSize.set(transferred);
+				if (copyCallback.apply(transferred).equals(false)) {
+					throw new StoppedTransfertException(name, transferred);
+				}
+			};
+		}
+
+		@Override
+		public TransferListener directory(final String name) {
+			return this;
+		}
+
+		public long getTotalSize() {
+			return totalSize.get();
+		}
+	}
+
+	private class LocalSourceFileImpl extends TransferListenerImpl implements LocalSourceFile {
+
+		private final String name;
+		private final InputStream inputStream;
+
+		LocalSourceFileImpl(final String name,
+		                    final InputStream inputStream,
+		                    final SizedStoppableCopyCallback copyCallback) {
+			super(copyCallback);
+			this.name = name;
+			this.inputStream = inputStream;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public InputStream getInputStream() throws IOException {
+			return inputStream;
+		}
+
+		@Override
+		public long getLength() {
+			return -1;
+		}
+
+		@Override
+		public int getPermissions() throws IOException {
+			return 777;
+		}
+
+		@Override
+		public boolean isFile() {
+			return true;
+		}
+
+		@Override
+		public boolean isDirectory() {
+			return false;
+		}
+
+		@Override
+		public Iterable<? extends LocalSourceFile> getChildren(final LocalFileFilter filter) throws IOException {
+			return List.of();
+		}
+
+		@Override
+		public boolean providesAtimeMtime() {
+			return false;
+		}
+
+		@Override
+		public long getLastAccessTime() throws IOException {
+			return System.currentTimeMillis() / 1000L;
+		}
+
+		@Override
+		public long getLastModifiedTime() throws IOException {
+			return System.currentTimeMillis() / 1000L;
+		}
+
+	}
+
+	private class LocalDestFileImpl extends TransferListenerImpl implements LocalDestFile {
+
+		private final OutputStream outputStream;
+
+		LocalDestFileImpl(final OutputStream outputStream,
+		                  final SizedStoppableCopyCallback copyCallback) {
+			super(copyCallback);
+			this.outputStream = outputStream;
+		}
+
+		@Override
+		public OutputStream getOutputStream() throws IOException {
+			return outputStream;
+		}
+
+		@Override
+		public LocalDestFile getChild(final String name) {
+			throw new UnsupportedOperationException("Not avaliable");
+		}
+
+		@Override
+		public LocalDestFile getTargetFile(final String filename) throws IOException {
+			return this;
+		}
+
+		@Override
+		public LocalDestFile getTargetDirectory(final String dirname) throws IOException {
+			throw new UnsupportedOperationException("Not avaliable");
+		}
+
+		@Override
+		public void setPermissions(final int perms) throws IOException {
+			/**
+			 * Not managed
+			 */
+		}
+
+		@Override
+		public void setLastAccessedTime(final long t) throws IOException {
+			/**
+			 * Not managed
+			 */
+		}
+
+		@Override
+		public void setLastModifiedTime(final long t) throws IOException {
+			/**
+			 * Not managed
+			 */
+		}
+
 	}
 
 }

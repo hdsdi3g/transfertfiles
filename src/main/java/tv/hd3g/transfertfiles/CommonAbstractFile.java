@@ -16,6 +16,9 @@
  */
 package tv.hd3g.transfertfiles;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Objects;
 
 import org.apache.commons.io.FilenameUtils;
@@ -78,6 +81,31 @@ public abstract class CommonAbstractFile<T extends AbstractFileSystem<?>> implem
 		}
 		final var other = (CommonAbstractFile<?>) obj;
 		return Objects.equals(fileSystem, other.fileSystem) && Objects.equals(path, other.path);
+	}
+
+	/**
+	 * Dont forget to close inputStream / outputStream after use
+	 */
+	public static long observableCopyStream(final InputStream inputStream,
+	                                        final OutputStream outputStream,
+	                                        final int bufferSize,
+	                                        final SizedStoppableCopyCallback copyCallback) throws IOException {
+		final var buffer = new byte[bufferSize];
+
+		/**
+		 * From IOUtils.copyLarge
+		 */
+		var totalSize = 0L;
+		var n = 0;
+		while (-1 != (n = inputStream.read(buffer))) {
+			outputStream.write(buffer, 0, n);
+			totalSize += n;
+
+			if (copyCallback.apply(totalSize).equals(false)) {
+				return totalSize;
+			}
+		}
+		return totalSize;
 	}
 
 }

@@ -48,4 +48,10 @@ public interface AbstractFileSystem<T extends AbstractFile> extends Closeable {
 	boolean isReusable();
 
 	boolean isAvaliable();
+
+	/**
+	 * @return the same code for the same internal engine instance in FileSystem.
+	 *         Can be used for interract two FS and protect the both are not the same.
+	 */
+	int reusableHashCode();
 }

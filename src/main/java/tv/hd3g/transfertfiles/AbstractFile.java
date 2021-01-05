@@ -17,8 +17,16 @@
 package tv.hd3g.transfertfiles;
 
 import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
+
+import tv.hd3g.commons.IORuntimeException;
+import tv.hd3g.transfertfiles.local.LocalFileSystem;
 
 /**
  * Expected to be stateless (store statuses in corresponding AbstractFileSystem) and thread safe.
@@ -118,5 +126,78 @@ public interface AbstractFile {
 		} else {
 			return p;
 		}
+	}
+
+	/**
+	 * Only use with a regular file. Type will not be checked before copy action.
+	 * @param bufferSize can be used on internal stream transfert, but it's not mandated.
+	 * @return data size readed from this
+	 */
+	long downloadAbstract(final OutputStream outputStream,
+	                      int bufferSize,
+	                      final SizedStoppableCopyCallback copyCallback);
+
+	/**
+	 * Only use with a regular file. Type will not be checked before copy action.
+	 * @param bufferSize can be used on internal stream transfert, but it's not mandated.
+	 * @return data size writer to this
+	 */
+	long uploadAbstract(final InputStream inputStream,
+	                    int bufferSize,
+	                    final SizedStoppableCopyCallback copyCallback);
+
+	static void checkIsSameFileSystem(final AbstractFile from,
+	                                  final AbstractFile destination) {
+		final var fromFs = from.getFileSystem();
+		final var toFs = destination.getFileSystem();
+		if (fromFs.equals(toFs) == false
+		    || fromFs instanceof LocalFileSystem
+		    || toFs instanceof LocalFileSystem) {
+			return;
+		}
+		if (fromFs.reusableHashCode() == toFs.reusableHashCode()) {
+			throw new IORuntimeException(
+			        "Can't use same FileSystem instances between to AbstractFiles. Please start a new FS instance for one of the two AbstractFile");
+		}
+	}
+
+	default void copyAbstractToAbstract(final AbstractFile destination,
+	                                    final DataExchangeObserver dataExchangeObserver) {
+		final var bufferSize = Math.max(8192,
+		        Math.max(destination.getFileSystem().getIOBufferSize(),
+		                getFileSystem().getIOBufferSize()));
+		copyAbstractToAbstract(destination, dataExchangeObserver, new DataExchangeInOutStream(bufferSize));
+	}
+
+	default void copyAbstractToAbstract(final AbstractFile destination,
+	                                    final DataExchangeObserver dataExchangeObserver,
+	                                    final DataExchangeInOutStream exchange) {
+		checkIsSameFileSystem(this, destination);
+
+		final var bufferSize = exchange.getBufferSize();
+		final var sourceStream = exchange.getSourceOriginStream();
+		final var destStream = exchange.getDestTargetStream();
+		final var startDate = System.currentTimeMillis();
+
+		final SizedStoppableCopyCallback readCallback = copied -> dataExchangeObserver
+		        .onTransfertProgressFromSource(this, startDate, copied);
+		final SizedStoppableCopyCallback writeCallback = copied -> dataExchangeObserver
+		        .onTransfertProgressToDestination(destination, startDate, copied);
+
+		dataExchangeObserver.beforeTransfert(this, destination);
+		final var downloader = CompletableFuture.supplyAsync(() -> downloadAbstract(destStream, bufferSize,
+		        readCallback));
+
+		final var writed = destination.uploadAbstract(sourceStream, bufferSize, writeCallback);
+
+		long readed;
+		try {
+			readed = downloader.get();
+		} catch (InterruptedException | ExecutionException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(e);
+		}
+		dataExchangeObserver.afterTransfert(this, destination, readed, writed,
+		        Duration.ofMillis(System.currentTimeMillis() - startDate));
 	}
 }

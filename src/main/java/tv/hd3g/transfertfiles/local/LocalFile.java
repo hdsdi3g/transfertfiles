@@ -24,8 +24,14 @@ import static java.time.temporal.ChronoUnit.MILLIS;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.DISTANTTOLOCAL;
 import static tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection.LOCALTODISTANT;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -41,6 +47,7 @@ import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.AbstractFile;
 import tv.hd3g.transfertfiles.CannotDeleteException;
 import tv.hd3g.transfertfiles.CommonAbstractFile;
+import tv.hd3g.transfertfiles.SizedStoppableCopyCallback;
 import tv.hd3g.transfertfiles.TransfertObserver;
 import tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection;
 
@@ -126,6 +133,40 @@ public class LocalFile extends CommonAbstractFile<LocalFileSystem> {// NOSONAR S
 		}
 		observer.afterTransfert(localFile, this, transfertDirection,
 		        Duration.of(System.currentTimeMillis() - now, MILLIS));
+	}
+
+	@Override
+	public long downloadAbstract(final OutputStream outputStream,
+	                             final int bufferSize,
+	                             final SizedStoppableCopyCallback copyCallback) {
+		try (var inputStream = new BufferedInputStream(new FileInputStream(internalFile), bufferSize)) {
+			return observableCopyStream(inputStream, outputStream, bufferSize, copyCallback);
+		} catch (final IOException e) {
+			throw new IORuntimeException(e);
+		} finally {
+			try {
+				outputStream.close();
+			} catch (final IOException e) {
+				log.error("Can't close provided outputStream after use", e);
+			}
+		}
+	}
+
+	@Override
+	public long uploadAbstract(final InputStream inputStream,
+	                           final int bufferSize,
+	                           final SizedStoppableCopyCallback copyCallback) {
+		try (var outputStream = new BufferedOutputStream(new FileOutputStream(internalFile), bufferSize)) {
+			return observableCopyStream(inputStream, outputStream, bufferSize, copyCallback);
+		} catch (final IOException e) {
+			throw new IORuntimeException(e);
+		} finally {
+			try {
+				inputStream.close();
+			} catch (final IOException e) {
+				log.error("Can't close provided inputStream after use", e);
+			}
+		}
 	}
 
 	@Override

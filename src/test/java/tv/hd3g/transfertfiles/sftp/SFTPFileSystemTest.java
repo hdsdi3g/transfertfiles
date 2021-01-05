@@ -432,4 +432,19 @@ class SFTPFileSystemTest {
 		assertEquals(fs.getTimeout(), client.getTimeout());
 	}
 
+	@Test
+	void testReusableHashCode() {
+		fs.setPasswordAuth(password.toCharArray());
+		fs.connect();
+		final var code0 = fs.reusableHashCode();
+		assertNotEquals(0, code0);
+
+		final var lfs = new SFTPFileSystem(host, port, username, "");
+		lfs.setPasswordAuth(password.toCharArray());
+		lfs.connect();
+		assertNotEquals(code0, lfs.reusableHashCode());
+
+		lfs.close();
+	}
+
 }

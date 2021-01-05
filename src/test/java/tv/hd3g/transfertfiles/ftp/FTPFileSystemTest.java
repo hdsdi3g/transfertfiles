@@ -18,6 +18,7 @@ package tv.hd3g.transfertfiles.ftp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -228,4 +229,13 @@ class FTPFileSystemTest {
 		assertEquals(fs.getTimeout(), client.getDefaultTimeout());
 	}
 
+	@Test
+	void testReusableHashCode() {
+		final var code0 = fs.reusableHashCode();
+		assertNotEquals(0, code0);
+		final var lfs = new FTPFileSystem(host, port, username, noPassword, false, "");
+		assertNotEquals(code0, lfs.reusableHashCode());
+
+		lfs.close();
+	}
 }

@@ -20,13 +20,27 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.only;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+import static tv.hd3g.transfertfiles.CommonAbstractFile.observableCopyStream;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Random;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -34,6 +48,13 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 class CommonAbstractFileTest {
+
+	static Random random;
+
+	@BeforeAll
+	static void initAll() {
+		random = new Random();
+	}
 
 	@Mock
 	AbstractFileSystem<CAF> fs;
@@ -102,6 +123,45 @@ class CommonAbstractFileTest {
 	@Test
 	void testGetName() {
 		assertEquals("sub-path", caf.getName());
+	}
+
+	@Test
+	void testObservableCopyStream() throws IOException {
+		final var sourceDatas = new byte[200];
+		random.nextBytes(sourceDatas);
+		final var inputStream = new ByteArrayInputStream(sourceDatas);
+		final var outputStream = new ByteArrayOutputStream();
+
+		final var copyCallback = Mockito.mock(SizedStoppableCopyCallback.class);
+		when(copyCallback.apply(anyLong())).thenReturn(true);
+
+		final var totalSize = observableCopyStream(inputStream, outputStream, 64, copyCallback);
+
+		assertEquals(sourceDatas.length, totalSize);
+		verify(copyCallback, atLeastOnce()).apply(anyLong());
+
+		assertTrue(Arrays.equals(sourceDatas, outputStream.toByteArray()));
+	}
+
+	@Test
+	void testObservableCopyStream_stop() throws IOException {
+		final var sourceDatas = new byte[200];
+		random.nextBytes(sourceDatas);
+		final var inputStream = new ByteArrayInputStream(sourceDatas);
+		final var outputStream = new ByteArrayOutputStream();
+
+		final var copyCallback = Mockito.mock(SizedStoppableCopyCallback.class);
+		when(copyCallback.apply(anyLong())).thenReturn(true, true, false);
+
+		final var totalSize = (int) observableCopyStream(inputStream, outputStream, 10, copyCallback);
+
+		assertEquals(30, totalSize);
+		verify(copyCallback, Mockito.times(1)).apply(eq(10L));
+		verify(copyCallback, Mockito.times(1)).apply(eq(20L));
+		verify(copyCallback, Mockito.times(1)).apply(eq(30L));
+		verifyNoMoreInteractions(copyCallback);
+
+		assertTrue(Arrays.equals(sourceDatas, 0, totalSize, outputStream.toByteArray(), 0, totalSize));
 	}
 
 	@Test
@@ -199,6 +259,20 @@ class CommonAbstractFileTest {
 		@Override
 		public Stream<CachedFileAttributes> toCachedList() {
 			return null;
+		}
+
+		@Override
+		public long downloadAbstract(final OutputStream outputStream,
+		                             final int bufferSize,
+		                             final SizedStoppableCopyCallback copyCallback) {
+			return 0;
+		}
+
+		@Override
+		public long uploadAbstract(final InputStream inputStream,
+		                           final int bufferSize,
+		                           final SizedStoppableCopyCallback copyCallback) {
+			return 0;
 		}
 	}
 }
