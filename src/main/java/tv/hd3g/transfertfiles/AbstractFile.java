@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
 import tv.hd3g.commons.IORuntimeException;
+import tv.hd3g.transfertfiles.filters.DataExchangeFilter;
 import tv.hd3g.transfertfiles.local.LocalFileSystem;
 
 /**
@@ -162,19 +163,22 @@ public interface AbstractFile {
 	}
 
 	default void copyAbstractToAbstract(final AbstractFile destination,
-	                                    final DataExchangeObserver dataExchangeObserver) {
+	                                    final DataExchangeObserver dataExchangeObserver,
+	                                    final DataExchangeFilter... filters) {
 		final var bufferSize = Math.max(8192,
 		        Math.max(destination.getFileSystem().getIOBufferSize(),
 		                getFileSystem().getIOBufferSize()));
-		copyAbstractToAbstract(destination, dataExchangeObserver, new DataExchangeInOutStream(bufferSize));
+		final var exchange = new DataExchangeInOutStream();
+		Stream.of(filters).forEach(exchange::addFilter);
+		copyAbstractToAbstract(destination, bufferSize, dataExchangeObserver, exchange);
 	}
 
 	default void copyAbstractToAbstract(final AbstractFile destination,
+	                                    final int bufferSize,
 	                                    final DataExchangeObserver dataExchangeObserver,
 	                                    final DataExchangeInOutStream exchange) {
 		checkIsSameFileSystem(this, destination);
 
-		final var bufferSize = exchange.getBufferSize();
 		final var sourceStream = exchange.getSourceOriginStream();
 		final var destStream = exchange.getDestTargetStream();
 		final var startDate = System.currentTimeMillis();

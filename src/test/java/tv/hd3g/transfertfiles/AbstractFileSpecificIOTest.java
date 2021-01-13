@@ -47,7 +47,7 @@ import org.mockito.internal.util.MockUtil;
 
 import tv.hd3g.commons.IORuntimeException;
 
-class SpecificIOTestAbstractFileTest {
+class AbstractFileSpecificIOTest {
 
 	static Random random;
 
@@ -87,8 +87,8 @@ class SpecificIOTestAbstractFileTest {
 	@Test
 	void testCopyDefault() {
 		source.copyAbstractToAbstract(destination, observer);
-		verify(destination, times(1)).uploadAbstract(any(InputStream.class), eq(8192), any(
-		        SizedStoppableCopyCallback.class));
+		verify(destination, times(1)).uploadAbstract(any(InputStream.class), eq(8192),
+		        any(SizedStoppableCopyCallback.class));
 		assertEquals(1, source.outputStreams.size());
 		assertEquals(1, source.copyCallbacks.size());
 
@@ -106,8 +106,8 @@ class SpecificIOTestAbstractFileTest {
 		final var outputStream = exchange.getDestTargetStream();
 		final var inputStream = exchange.getSourceOriginStream();
 
-		source.copyAbstractToAbstract(destination, observer, exchange);
-		verify(destination, times(1)).uploadAbstract(eq(inputStream), eq(exchange.getBufferSize()),
+		source.copyAbstractToAbstract(destination, 8192, observer, exchange);
+		verify(destination, times(1)).uploadAbstract(eq(inputStream), eq(8192),
 		        any(SizedStoppableCopyCallback.class));
 		assertEquals(1, source.outputStreams.size());
 		assertEquals(outputStream, source.outputStreams.get(0));
