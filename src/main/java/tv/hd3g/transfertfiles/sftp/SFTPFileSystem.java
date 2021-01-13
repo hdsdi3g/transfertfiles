@@ -46,6 +46,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 	private final int port;
 	private final String username;
 	private final Set<KeyProvider> authKeys;
+	private final boolean absoluteBasePath;
 
 	private char[] password;
 	private SFTPClient sftpClient;
@@ -53,6 +54,14 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 	private volatile boolean wasConnected;
 
 	public SFTPFileSystem(final InetAddress host, final int port, final String username, final String basePath) {
+		this(host, port, username, basePath, false);
+	}
+
+	public SFTPFileSystem(final InetAddress host,
+	                      final int port,
+	                      final String username,
+	                      final String basePath,
+	                      final boolean absoluteBasePath) {
 		super(basePath);
 		client = new SSHClient();
 		wasConnected = false;
@@ -63,6 +72,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 			throw new IllegalArgumentException("Invalid (empty) username");
 		}
 		authKeys = new HashSet<>();
+		this.absoluteBasePath = absoluteBasePath;
 		log.debug("Init ssh client to {}", this);
 
 		final var defaultKhFile = System.getProperty("user.home")
@@ -232,6 +242,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 				log.debug("Create a new SFTP client for {}", this);
 				sftpClient = client.newSFTPClient();
 			}
+			sftpClient.getFileTransfer().setPreserveAttributes(false);
 		} catch (final IOException e) {
 			throw new IORuntimeException(e);
 		}
@@ -262,6 +273,10 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 		final var rpath = getPathFromRelative(path);
 		log.trace("Create new SFTPFile to {}/{}", this, rpath);
 		return new SFTPFile(this, sftpClient, rpath);
+	}
+
+	public boolean isAbsoluteBasePath() {
+		return absoluteBasePath;
 	}
 
 	public InetAddress getHost() {
