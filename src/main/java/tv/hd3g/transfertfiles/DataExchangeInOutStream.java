@@ -20,10 +20,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import tv.hd3g.transfertfiles.filters.DataExchangeFilter;
 
 /**
  * Not reusable
@@ -34,25 +41,38 @@ public class DataExchangeInOutStream {
 	private final InternalInputStream internalInputStream;
 	private final InternalOutputStream internalOutputStream;
 
-	private final ByteBuffer buffer;
-	private volatile boolean stopped;
-	private volatile boolean inWrite;
+	private final List<DataExchangeFilter> filters;
+	private final ConcurrentLinkedQueue<ByteBuffer> readQueue;
+	private final AtomicInteger ensureMinWriteBuffersSize;
+	private volatile State state;
 
-	public DataExchangeInOutStream(final int bufferSize) {
-		internalInputStream = new InternalInputStream();
-		internalOutputStream = new InternalOutputStream();
-		stopped = false;
-		inWrite = true;
-		buffer = ByteBuffer.allocate(bufferSize);
-		buffer.limit(0);
+	public enum State {
+		WORKING(false, false),
+		STOPPED_BY_USER(true, false),
+		STOPPED_BY_FILTER(true, false),
+		WRITER_MANUALLY_CLOSED(false, true),
+		FILTER_ERROR(false, true);
+
+		final boolean stopped;
+		final boolean close;
+
+		State(final boolean stopped, final boolean close) {
+			this.stopped = stopped;
+			this.close = close;
+		}
 	}
 
 	public DataExchangeInOutStream() {
-		this(8192);
+		internalInputStream = new InternalInputStream();
+		internalOutputStream = new InternalOutputStream();
+		filters = Collections.synchronizedList(new ArrayList<>());
+		readQueue = new ConcurrentLinkedQueue<>();
+		state = State.WORKING;
+		ensureMinWriteBuffersSize = new AtomicInteger();
 	}
 
 	private class InternalInputStream extends InputStream {
-		private volatile boolean closed = false;
+		private volatile boolean readerClosed = false;
 
 		@Override
 		public int read(final byte[] b, final int off, final int len) throws IOException {
@@ -61,37 +81,37 @@ public class DataExchangeInOutStream {
 				throw new IllegalArgumentException("Invalid len=" + len);
 			}
 
-			while (inWrite
-			       && internalOutputStream.closed == false
-			       && closed == false
-			       && stopped == false) {
+			if (log.isTraceEnabled()) {
+				log.trace("Read event (wait) of {} byte(s), {} in queue...", len, readQueue.size());
+			}
+
+			while (readQueue.isEmpty()
+			       && state == State.WORKING
+			       && readerClosed == false) {
 				Thread.onSpinWait();
 			}
-			if (closed) {
-				throw new IOException("Closed InputStream");
-			} else if (stopped) {
-				closed = true;
+
+			if (readerClosed) {
+				throw new IOException("Closed InputStream (reader)");
+			} else if (state.stopped) {
+				log.trace("Read stopped: {}, {} in queue", state, readQueue.size());
+				readerClosed = true;
+				return -1;
+			} else if (readQueue.isEmpty() && state.close) {
+				log.trace("Read: outstream (reader) was close, nothing in queue");
 				return -1;
 			}
 
+			final var buffer = readQueue.element();
+
 			final var toRead = Math.min(buffer.remaining(), len);
-			if (toRead == 0) {
-				inWrite = true;
-				if (internalOutputStream.closed) {
-					log.trace("outstream was close");
-					return -1;
-				}
-				log.trace("read 0 remaining={}", buffer.remaining());
-				return 0;
-			} else {
-				log.trace("Read from remaining={} toRead={} to b={} off={} len={}",
-				        buffer.remaining(), toRead, b.length, off, len);
-				buffer.get(b, off, toRead);
-				if (buffer.hasRemaining() == false) {
-					inWrite = true;
-				}
-				return toRead;
+			log.trace("Read from remaining={} toRead={} to b={} off={} len={}",
+			        buffer.remaining(), toRead, b.length, off, len);
+			buffer.get(b, off, toRead);
+			if (buffer.hasRemaining() == false) {
+				readQueue.remove();
 			}
+			return toRead;
 		}
 
 		@Override
@@ -106,30 +126,36 @@ public class DataExchangeInOutStream {
 
 		@Override
 		public int available() throws IOException {
-			if (closed || stopped) {
+			if (readerClosed || state.stopped) {
 				return 0;
 			}
-			if (inWrite == false) {
-				return buffer.remaining();
-			}
-			return 0;
+			return (int) readQueue.stream()
+			        .mapToInt(ByteBuffer::remaining)
+			        .summaryStatistics()
+			        .getSum();
 		}
 
 		@Override
 		public void close() throws IOException {
-			if (closed) {
+			if (readerClosed) {
 				return;
 			}
-			closed = true;
-			buffer.clear();
+			readerClosed = true;
+
 			internalOutputStream.close();
-			log.trace("Stop read");
+			readQueue.forEach(ByteBuffer::clear);
+			log.trace("Close read");
 		}
 
 	}
 
 	private class InternalOutputStream extends OutputStream {
-		private volatile boolean closed = false;
+
+		private final BufferVault buffers;
+
+		InternalOutputStream() {
+			buffers = new BufferVault();
+		}
 
 		@Override
 		public void write(final byte[] b, final int off, final int len) throws IOException {
@@ -138,31 +164,30 @@ public class DataExchangeInOutStream {
 				throw new IllegalArgumentException("Invalid len=" + len);
 			}
 
-			var toWrite = len;
-			var writed = 0;
-
-			while (closed == false && stopped == false && toWrite > 0) {
-				while (inWrite == false) {
+			if (state == State.WORKING) {
+				while (readQueue.isEmpty() == false) {
 					Thread.onSpinWait();
 				}
-				buffer.clear();
 
-				final var writedOnLoop = Math.min(toWrite, buffer.remaining());
+				buffers.write(b, off, len);
 
-				log.trace("Write from b={} off={} len={} to writedOnLoop={} toWrite={}",
-				        b.length, off, len, writedOnLoop, toWrite);
+				final var totalWrited = buffers.getSize();
+				log.trace("Write from b/off/len {}/{}/{} to total writed {}",
+				        b.length, off, len, totalWrited);
 
-				buffer.put(b, off + writed, writedOnLoop);
-				buffer.flip();
-				toWrite = toWrite - writedOnLoop;
-				writed = writed + writedOnLoop;
-				inWrite = false;
+				if (totalWrited > ensureMinWriteBuffersSize.get()) {
+					processFilters(false);
+				}
 			}
 
-			if (closed) {
-				throw new IOException("Closed OutputStream");
-			} else if (stopped) {
-				throw new IOException("Stopped OutputStream");
+			if (state == State.STOPPED_BY_FILTER) {
+				throw new IOException("Stopped OutputStream (writer) by filter");
+			} else if (state == State.STOPPED_BY_USER) {
+				throw new IOException("Stopped OutputStream (writer)");
+			} else if (state == State.WRITER_MANUALLY_CLOSED) {
+				throw new IOException("Closed OutputStream (writer)");
+			} else if (state == State.FILTER_ERROR) {
+				throw new IOException("Closed OutputStream (writer) caused by filter error");
 			}
 		}
 
@@ -174,17 +199,84 @@ public class DataExchangeInOutStream {
 
 		@Override
 		public void close() throws IOException {
-			if (closed) {
+			if (state.close) {
 				return;
 			}
-			closed = true;
-			log.trace("Stop write");
+			log.trace("Close write");
+
+			processFilters(true);
+			if (state == State.WORKING) {
+				state = State.WRITER_MANUALLY_CLOSED;
+			} else if (state == State.STOPPED_BY_FILTER) {
+				throw new IOException("Stopped OutputStream (writer) by filter");
+			} else if (state == State.STOPPED_BY_USER) {
+				throw new IOException("Stopped OutputStream (writer)");
+			} else if (state == State.FILTER_ERROR) {
+				throw new IOException("Closed OutputStream (writer) caused by filter error");
+			}
 		}
 
+		private void processFilters(final boolean lastCall) {
+			var canceled = false;
+			var nextBuffers = buffers;
+			for (var posF = 0; posF < filters.size(); posF++) {
+				final var currentFilter = filters.get(posF);
+				if (canceled) {
+					try {
+						currentFilter.onCancelTransfert();
+					} catch (final Exception e) {
+						log.warn("Error during during close all filters", e);
+					}
+					continue;
+				}
+
+				try {
+					if (log.isTraceEnabled()) {
+						log.trace("Apply filter {} for {} bytes...",
+						        currentFilter.getFilterName(), nextBuffers.getSize());
+					}
+
+					final var previousBuffers = nextBuffers;
+					nextBuffers = currentFilter.applyDataFilter(lastCall, nextBuffers);
+					if (nextBuffers == null) {
+						if (log.isTraceEnabled()) {
+							log.trace("After apply filter {}, want to stop!", currentFilter.getFilterName());
+						}
+						throw new StoppedByFilter(currentFilter);
+					} else if (nextBuffers.getSize() == 0) {
+						if (log.isTraceEnabled()) {
+							log.trace("After apply filter {}, no datas provided", currentFilter.getFilterName());
+						}
+						nextBuffers = previousBuffers;
+					} else if (log.isTraceEnabled()) {
+						log.trace("After apply filter {}, provide {} bytes",
+						        currentFilter.getFilterName(), nextBuffers.getSize());
+					}
+				} catch (final StoppedByFilter e) {
+					canceled = true;
+					log.info("Filter manually stop exchange process {}", currentFilter.getFilterName());
+					state = State.STOPPED_BY_FILTER;
+				} catch (final Exception e) {
+					canceled = true;
+					log.error("Error during process filtering (close exchange process)", e);
+					state = State.FILTER_ERROR;
+				}
+			}
+			if (canceled == false) {
+				readQueue.add(nextBuffers.readAllToByteBuffer());
+				if (log.isTraceEnabled()) {
+					log.trace("Filters: read queue has now {} item(s)", readQueue.size());
+				}
+				buffers.clear();
+			}
+		}
 	}
 
-	public int getBufferSize() {
-		return buffer.capacity();
+	private class StoppedByFilter extends RuntimeException {
+		StoppedByFilter(final DataExchangeFilter filter) {
+			super(filter.getFilterName());
+		}
+
 	}
 
 	/**
@@ -202,11 +294,35 @@ public class DataExchangeInOutStream {
 		return internalInputStream;
 	}
 
-	public synchronized boolean isStopped() {
-		return stopped;
+	public synchronized void stop() {
+		if (state == State.WORKING) {
+			state = State.STOPPED_BY_USER;
+		}
 	}
 
-	public synchronized void stop() {
-		stopped = true;
+	public synchronized State getState() {
+		return state;
+	}
+
+	public DataExchangeInOutStream addFilter(final DataExchangeFilter filter) {
+		Objects.requireNonNull(filter);
+		filters.add(filter);
+		final var buffersSize = ensureMinWriteBuffersSize.updateAndGet(current -> {
+			final var filterBuffer = filter.ensureMinDataSourcesDataLength();
+			if (filterBuffer > current) {
+				return filterBuffer;
+			} else {
+				return current;
+			}
+		});
+
+		/**
+		 * Pre-heat internalOutputStream.buffers internal size
+		 */
+		final var itemsCountToAdd = buffersSize - internalOutputStream.buffers.getSize();
+		if (itemsCountToAdd > 0) {
+			internalOutputStream.buffers.ensureBufferSize(itemsCountToAdd);
+		}
+		return this;
 	}
 }
