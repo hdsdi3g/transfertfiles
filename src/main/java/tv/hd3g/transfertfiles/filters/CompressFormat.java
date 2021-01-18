@@ -14,15 +14,26 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2021
  *
  */
-package tv.hd3g.transfertfiles;
+package tv.hd3g.transfertfiles.filters;
 
-import java.util.function.Function;
+import org.apache.commons.compress.compressors.CompressorStreamFactory;
 
 /**
- * Called after each copy loop ! Please do a quick answer !
- * @param long for all data transferred at now
- * @return true for keep transfert, false to cancel it
+ * Shorthand for CompressorStreamFactory constants
  */
-public interface SizedStoppableCopyCallback extends Function<Long, Boolean> {
+public enum CompressFormat {
+	BZIP2(CompressorStreamFactory.BZIP2),
+	GZIP(CompressorStreamFactory.GZIP),
+	XZ(CompressorStreamFactory.XZ),
+	LZMA(CompressorStreamFactory.LZMA),
+	DEFLATE(CompressorStreamFactory.DEFLATE),
+	LZ4_BLOCK(CompressorStreamFactory.LZ4_BLOCK),
+	LZ4_FRAMED(CompressorStreamFactory.LZ4_FRAMED);
+
+	final String constantName;
+
+	CompressFormat(final String constantName) {
+		this.constantName = constantName;
+	}
 
 }

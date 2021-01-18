@@ -131,6 +131,7 @@ public interface AbstractFile {
 
 	/**
 	 * Only use with a regular file. Type will not be checked before copy action.
+	 * Never forget to call outputStream.close after download.
 	 * @param bufferSize can be used on internal stream transfert, but it's not mandated.
 	 * @return data size readed from this
 	 */
@@ -162,15 +163,16 @@ public interface AbstractFile {
 		}
 	}
 
-	default void copyAbstractToAbstract(final AbstractFile destination,
-	                                    final DataExchangeObserver dataExchangeObserver,
-	                                    final DataExchangeFilter... filters) {
+	default DataExchangeInOutStream copyAbstractToAbstract(final AbstractFile destination,
+	                                                       final DataExchangeObserver dataExchangeObserver,
+	                                                       final DataExchangeFilter... filters) {
 		final var bufferSize = Math.max(8192,
 		        Math.max(destination.getFileSystem().getIOBufferSize(),
 		                getFileSystem().getIOBufferSize()));
 		final var exchange = new DataExchangeInOutStream();
 		Stream.of(filters).forEach(exchange::addFilter);
 		copyAbstractToAbstract(destination, bufferSize, dataExchangeObserver, exchange);
+		return exchange;
 	}
 
 	default void copyAbstractToAbstract(final AbstractFile destination,

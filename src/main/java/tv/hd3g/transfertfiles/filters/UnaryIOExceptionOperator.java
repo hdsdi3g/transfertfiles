@@ -14,15 +14,13 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2021
  *
  */
-package tv.hd3g.transfertfiles;
+package tv.hd3g.transfertfiles.filters;
 
-import java.util.function.Function;
+import java.io.IOException;
 
-/**
- * Called after each copy loop ! Please do a quick answer !
- * @param long for all data transferred at now
- * @return true for keep transfert, false to cancel it
- */
-public interface SizedStoppableCopyCallback extends Function<Long, Boolean> {
+@FunctionalInterface
+interface UnaryIOExceptionOperator<T> {
+
+	T apply(T t) throws IOException;
 
 }

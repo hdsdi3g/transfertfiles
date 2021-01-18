@@ -18,15 +18,20 @@ package tv.hd3g.transfertfiles;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -41,14 +46,12 @@ class BufferVaultTest {
 	}
 
 	BufferVault vault;
-	ByteBuffer inputBB;
 	byte[] inputArray;
 
 	@BeforeEach
 	void init() throws Exception {
 		inputArray = new byte[random.nextInt(100) + 100];
 		random.nextBytes(inputArray);
-		inputBB = ByteBuffer.wrap(inputArray);
 	}
 
 	@Nested
@@ -80,7 +83,7 @@ class BufferVaultTest {
 
 		@Test
 		void testWriteByteBuffer() {
-			vault.write(inputBB);
+			vault.write(ByteBuffer.wrap(inputArray));
 			assertTrue(Arrays.equals(inputArray, vault.readAll()));
 		}
 
@@ -221,6 +224,258 @@ class BufferVaultTest {
 			assertThrows(IllegalStateException.class, () -> itr0.hasNext());
 			assertThrows(IllegalStateException.class, () -> itr0.next());
 		}
+
+		@Test
+		void testReadByteArray_fully() {
+			vault.write(inputArray);
+			final var outputArray = new byte[inputArray.length];
+			final var readed = vault.read(outputArray, 0, 0, inputArray.length);
+			assertEquals(readed, inputArray.length);
+			assertTrue(Arrays.equals(inputArray, outputArray));
+		}
+
+		@Test
+		void testReadByteArray_partial() {
+			vault.write(inputArray);
+			final var outputArray = new byte[inputArray.length / 2];
+			final var posIn = inputArray.length / 10;
+			final var posOut = outputArray.length / 10;
+			final var sizeOut = outputArray.length - posOut;
+			final var readed = vault.read(outputArray, posIn, posOut, sizeOut);
+			assertEquals(sizeOut, readed);
+			assertTrue(Arrays.equals(inputArray, posIn, posIn + sizeOut, outputArray, posOut, posOut + sizeOut));
+		}
+
+		@Test
+		void testReadByteArray_bounds() {
+			vault.write(inputArray);
+			final var outputArray = new byte[inputArray.length];
+			var readed = vault.read(outputArray, inputArray.length * 2, 0, inputArray.length);
+			assertEquals(-1, readed);
+
+			readed = vault.read(outputArray, 0, 0, 0);
+			assertEquals(0, readed);
+		}
+
+		@Test
+		void testAsOutputStream() throws IOException {
+			final var baIS = new ByteArrayInputStream(inputArray);
+			final var copied = baIS.transferTo(vault.asOutputStream());
+			assertEquals(inputArray.length, copied);
+			assertTrue(Arrays.equals(inputArray, vault.readAll()));
+
+			var rByte = random.nextInt() & 0xFF;
+			vault.asOutputStream().write(rByte);
+			assertEquals(rByte, vault.read(inputArray.length));
+
+			rByte = random.nextInt() & 0xFF;
+			vault.asOutputStream().write(new byte[] { (byte) rByte });
+			assertEquals(rByte, vault.read(inputArray.length + 1));
+
+			rByte = random.nextInt() & 0xFF;
+			vault.asOutputStream().write(new byte[] { (byte) (random.nextInt() & 0xFF), (byte) rByte }, 1, 1);
+			assertEquals(rByte, vault.read(inputArray.length + 2));
+		}
+
+		@Test
+		void testReadInt() throws IOException {
+			vault.write(inputArray);
+			assertEquals(-1, vault.read(inputArray.length * 2));
+			assertThrows(IndexOutOfBoundsException.class, () -> vault.read(-1));
+		}
+
+		@Test
+		void testOutputStream() throws IOException {
+			vault.write(inputArray);
+			final var outStream = new ByteArrayOutputStream();
+			vault.read(outStream);
+			assertTrue(Arrays.equals(inputArray, outStream.toByteArray()));
+		}
+
+		@Test
+		void testWrite() throws IOException {
+			final var inStream = new ByteArrayInputStream(inputArray);
+			final var transfered = vault.write(inStream, inputArray.length / 10);
+			assertTrue(Arrays.equals(inputArray, vault.readAll()));
+			assertEquals(inputArray.length, transfered);
+		}
+
+		@Test
+		void testHashCodeEquals() throws IOException {
+			vault.write(inputArray);
+			final var v0 = new BufferVault().write(inputArray);
+			assertEquals(vault, v0);
+			assertEquals(vault.hashCode(), v0.hashCode());
+
+			vault.clear();
+			final var v1 = new BufferVault();
+			assertEquals(vault, v1);
+			assertEquals(vault.hashCode(), v1.hashCode());
+
+			vault = new BufferVault();
+			assertEquals(vault, v1);
+			assertEquals(vault.hashCode(), v1.hashCode());
+
+			assertFalse(vault.equals(null)); // NOSONAR S5785
+			assertEquals(vault, vault);
+
+			class BVault extends BufferVault {
+			}
+			assertNotEquals(vault, new BVault());
+		}
+
+		@Nested
+		class CompactAndAppendWithSmaller {
+
+			byte[] additionnal;
+			BufferVault newDataSource;
+
+			@BeforeEach
+			void init() throws Exception {
+				additionnal = new byte[random.nextInt(inputArray.length - 2) + 1];
+				random.nextBytes(additionnal);
+				newDataSource = new BufferVault().write(additionnal);
+			}
+
+			@AfterEach
+			void ends() throws Exception {
+				assertEquals(new BufferVault().write(additionnal), newDataSource);
+			}
+
+			@Test
+			void testAddTheEnd_FromEmpty() {
+				vault.compactAndAppend(0, newDataSource);
+				assertEquals(vault.getSize(), newDataSource.getSize());
+				assertEquals(vault, newDataSource);
+			}
+
+			@Test
+			void testAddTheEnd_FromFull() {
+				vault.write(inputArray);
+				vault.compactAndAppend(inputArray.length, newDataSource);
+
+				final var compare = new BufferVault();
+				compare.write(additionnal);
+
+				assertEquals(compare.getSize(), vault.getSize());
+				assertEquals(compare, vault);
+			}
+
+			@Test
+			void testAddTheEnd_FromFull_withBiggerMargin() {
+				vault.write(inputArray);
+				vault.ensureBufferSize(additionnal.length);
+				vault.compactAndAppend(inputArray.length, newDataSource);
+
+				final var compare = new BufferVault();
+				compare.write(additionnal);
+
+				assertEquals(compare.getSize(), vault.getSize());
+				assertEquals(compare, vault);
+			}
+
+			@Test
+			void testAddTheEnd_FromFull_withSmallerMargin() {
+				vault.write(inputArray);
+				vault.ensureBufferSize(additionnal.length / 2);
+				vault.compactAndAppend(inputArray.length, newDataSource);
+
+				final var compare = new BufferVault();
+				compare.write(additionnal);
+
+				assertEquals(compare.getSize(), vault.getSize());
+				assertEquals(compare, vault);
+			}
+
+			@Test
+			void testAddTheStarts_FromFull() {
+				vault.write(inputArray);
+				vault.compactAndAppend(0, newDataSource);
+
+				final var compare = new BufferVault();
+				compare.write(inputArray);
+				compare.write(additionnal);
+
+				assertEquals(compare.getSize(), vault.getSize());
+				assertEquals(compare, vault);
+			}
+
+			@Test
+			void testAddTheStarts_FromFull_withBiggerMargin() {
+				vault.write(inputArray);
+				vault.ensureBufferSize(additionnal.length);
+				vault.compactAndAppend(0, newDataSource);
+
+				final var compare = new BufferVault();
+				compare.write(inputArray);
+				compare.write(additionnal);
+
+				assertEquals(compare.getSize(), vault.getSize());
+				assertEquals(compare, vault);
+			}
+
+			@Test
+			void testAddTheStarts_FromFull_withSmallerMargin() {
+				vault.write(inputArray);
+				vault.ensureBufferSize(additionnal.length / 2);
+				vault.compactAndAppend(0, newDataSource);
+
+				final var compare = new BufferVault();
+				compare.write(inputArray);
+				compare.write(additionnal);
+
+				assertEquals(compare.getSize(), vault.getSize());
+				assertEquals(compare, vault);
+			}
+
+			@Test
+			void testAddInMiddle_FromFull_withBiggerMargin() {
+				vault.ensureBufferSize(inputArray.length + additionnal.length);
+				vault.write(inputArray);
+				final var middle = inputArray.length / 2;
+				vault.compactAndAppend(middle, newDataSource);
+
+				final var compare = new BufferVault();
+				compare.write(inputArray, middle, inputArray.length - middle);
+				compare.write(additionnal);
+
+				assertEquals(compare.getSize(), vault.getSize());
+				assertEquals(compare, vault);
+			}
+
+			@Test
+			void testAddInMiddle_FromFull() {
+				vault.write(inputArray);
+				final var middle = inputArray.length / 2;
+				vault.compactAndAppend(middle, newDataSource);
+
+				final var compare = new BufferVault();
+				compare.write(inputArray, middle, inputArray.length - middle);
+				compare.write(additionnal);
+
+				assertEquals(compare.getSize(), vault.getSize());
+				assertEquals(compare, vault);
+			}
+
+			@Test
+			void testNoNegativePos() {
+				assertThrows(IllegalArgumentException.class, () -> vault.compactAndAppend(-1, newDataSource));
+			}
+
+		}
+
+		@Nested
+		class CompactAndAppendWithBigger extends CompactAndAppendWithSmaller {
+			@Override
+			@BeforeEach
+			void init() throws Exception {
+				additionnal = new byte[random.nextInt(100) + inputArray.length];
+				random.nextBytes(additionnal);
+				newDataSource = new BufferVault().write(additionnal);
+			}
+
+		}
+
 	}
 
 	@Nested
