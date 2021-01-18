@@ -22,10 +22,12 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -44,6 +46,10 @@ public class DataExchangeInOutStream {
 	private final List<DataExchangeFilter> filters;
 	private final ConcurrentLinkedQueue<ByteBuffer> readQueue;
 	private final AtomicInteger ensureMinWriteBuffersSize;
+	private final HashMap<DataExchangeFilter, Long> filterPerformance;
+	private final HashMap<DataExchangeFilter, Long> filterDeltaThroughput;
+	private final AtomicLong ioWaitTime;
+
 	private volatile State state;
 
 	public enum State {
@@ -69,6 +75,9 @@ public class DataExchangeInOutStream {
 		readQueue = new ConcurrentLinkedQueue<>();
 		state = State.WORKING;
 		ensureMinWriteBuffersSize = new AtomicInteger();
+		filterPerformance = new HashMap<>();
+		filterDeltaThroughput = new HashMap<>();
+		ioWaitTime = new AtomicLong(0);
 	}
 
 	private class InternalInputStream extends InputStream {
@@ -107,10 +116,15 @@ public class DataExchangeInOutStream {
 			final var toRead = Math.min(buffer.remaining(), len);
 			log.trace("Read from remaining={} toRead={} to b={} off={} len={}",
 			        buffer.remaining(), toRead, b.length, off, len);
+
+			final var now = System.currentTimeMillis();
 			buffer.get(b, off, toRead);
+			ioWaitTime.addAndGet(System.currentTimeMillis() - now);
+
 			if (buffer.hasRemaining() == false) {
 				readQueue.remove();
 			}
+
 			return toRead;
 		}
 
@@ -143,6 +157,7 @@ public class DataExchangeInOutStream {
 			readerClosed = true;
 
 			internalOutputStream.close();
+
 			readQueue.forEach(ByteBuffer::clear);
 			log.trace("Close read");
 		}
@@ -169,7 +184,9 @@ public class DataExchangeInOutStream {
 					Thread.onSpinWait();
 				}
 
+				final var now = System.currentTimeMillis();
 				buffers.write(b, off, len);
+				ioWaitTime.addAndGet(System.currentTimeMillis() - now);
 
 				final var totalWrited = buffers.getSize();
 				log.trace("Write from b/off/len {}/{}/{} to total writed {}",
@@ -219,6 +236,7 @@ public class DataExchangeInOutStream {
 		private void processFilters(final boolean lastCall) {
 			var canceled = false;
 			var nextBuffers = buffers;
+
 			for (var posF = 0; posF < filters.size(); posF++) {
 				final var currentFilter = filters.get(posF);
 				if (canceled) {
@@ -235,23 +253,8 @@ public class DataExchangeInOutStream {
 						log.trace("Apply filter {} for {} bytes...",
 						        currentFilter.getFilterName(), nextBuffers.getSize());
 					}
-
 					final var previousBuffers = nextBuffers;
-					nextBuffers = currentFilter.applyDataFilter(lastCall, nextBuffers);
-					if (nextBuffers == null) {
-						if (log.isTraceEnabled()) {
-							log.trace("After apply filter {}, want to stop!", currentFilter.getFilterName());
-						}
-						throw new StoppedByFilter(currentFilter);
-					} else if (nextBuffers.getSize() == 0) {
-						if (log.isTraceEnabled()) {
-							log.trace("After apply filter {}, no datas provided", currentFilter.getFilterName());
-						}
-						nextBuffers = previousBuffers;
-					} else if (log.isTraceEnabled()) {
-						log.trace("After apply filter {}, provide {} bytes",
-						        currentFilter.getFilterName(), nextBuffers.getSize());
-					}
+					nextBuffers = applyFilter(lastCall, nextBuffers, currentFilter, previousBuffers);
 				} catch (final StoppedByFilter e) {
 					canceled = true;
 					log.info("Filter manually stop exchange process {}", currentFilter.getFilterName());
@@ -270,6 +273,46 @@ public class DataExchangeInOutStream {
 				buffers.clear();
 			}
 		}
+
+		private BufferVault applyFilter(final boolean lastCall,
+		                                BufferVault nextBuffers,
+		                                final DataExchangeFilter currentFilter,
+		                                final BufferVault previousBuffers) throws IOException {
+			long currentPerformance;
+			long currentDeltaThroughput;
+			long now;
+			int inputBufferSize;
+
+			currentPerformance = filterPerformance.computeIfAbsent(currentFilter, cF -> 0L);
+			currentDeltaThroughput = filterDeltaThroughput.computeIfAbsent(currentFilter, cF -> 0L);
+			inputBufferSize = nextBuffers.getSize();
+			now = System.currentTimeMillis();
+
+			nextBuffers = currentFilter.applyDataFilter(lastCall, nextBuffers);
+
+			currentPerformance += System.currentTimeMillis() - now;
+			if (nextBuffers == null) {
+				if (log.isTraceEnabled()) {
+					log.trace("After apply filter {}, want to stop!", currentFilter.getFilterName());
+				}
+				throw new StoppedByFilter(currentFilter);
+			}
+
+			filterPerformance.put(currentFilter, currentPerformance);
+			currentDeltaThroughput += inputBufferSize - nextBuffers.getSize();
+			filterDeltaThroughput.put(currentFilter, currentDeltaThroughput);
+
+			if (nextBuffers.getSize() == 0) {
+				if (log.isTraceEnabled()) {
+					log.trace("After apply filter {}, no datas provided", currentFilter.getFilterName());
+				}
+				nextBuffers = previousBuffers;
+			} else if (log.isTraceEnabled()) {
+				log.trace("After apply filter {}, provide {} bytes",
+				        currentFilter.getFilterName(), nextBuffers.getSize());
+			}
+			return nextBuffers;
+		}
 	}
 
 	private class StoppedByFilter extends RuntimeException {
@@ -277,6 +320,39 @@ public class DataExchangeInOutStream {
 			super(filter.getFilterName());
 		}
 
+	}
+
+	public class TransfertStats {
+		private final long totalDuration;
+		private final long deltaTranfered;
+
+		private TransfertStats(final long totalDuration, final long deltaTranfered) {
+			this.totalDuration = totalDuration;
+			this.deltaTranfered = deltaTranfered;
+		}
+
+		/**
+		 * @return in bytes, relative to in filter input
+		 *         (0 = same as input, negative for shrink, positive for expand);
+		 */
+		public long getDeltaTranfered() {
+			return deltaTranfered;
+		}
+
+		/**
+		 * @return in ms
+		 */
+		public long getTotalDuration() {
+			return totalDuration;
+		}
+	}
+
+	public synchronized TransfertStats getTransfertStats(final DataExchangeFilter filter) {
+		if (state == State.WORKING) {
+			throw new IllegalStateException("Can't access to transfert stats during processing...");
+		}
+		return new TransfertStats(filterPerformance.computeIfAbsent(filter, f -> 0L),
+		        filterDeltaThroughput.computeIfAbsent(filter, f -> 0L));
 	}
 
 	/**
@@ -298,6 +374,13 @@ public class DataExchangeInOutStream {
 		if (state == State.WORKING) {
 			state = State.STOPPED_BY_USER;
 		}
+	}
+
+	/**
+	 * @return in ms
+	 */
+	public long getIoWaitTime() {
+		return ioWaitTime.get();
 	}
 
 	public synchronized State getState() {

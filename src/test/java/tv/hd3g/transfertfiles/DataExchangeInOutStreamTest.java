@@ -524,6 +524,7 @@ class DataExchangeInOutStreamTest {
 		void testStopWriteDuringRead2() throws IOException {
 			final var dataInput = new byte[bufferSize * 4];
 
+			exchange.stop();
 			final var cfWrite = CompletableFuture.runAsync(() -> {
 				try {
 					sourceTargetStream.write(dataInput);
@@ -531,7 +532,6 @@ class DataExchangeInOutStreamTest {
 					throw new IORuntimeException(e);
 				}
 			});
-			exchange.stop();
 			read(destOriginStream, dataOutput);
 
 			Exception e = null;

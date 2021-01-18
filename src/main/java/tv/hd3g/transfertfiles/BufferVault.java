@@ -21,7 +21,11 @@ import static java.util.Spliterator.NONNULL;
 import static java.util.Spliterator.ORDERED;
 import static java.util.Spliterator.SIZED;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -73,7 +77,7 @@ public class BufferVault {
 		final var missingSize = size + itemsCountToAdd - datas.length;
 		if (itemsCountToAdd < 0) {
 			throw new IllegalArgumentException("Invalid itemsCountToAdd=" + itemsCountToAdd);
-		} else if (missingSize == 0) {
+		} else if (missingSize <= 0) {
 			return this;
 		}
 		final var newData = new byte[datas.length + missingSize];
@@ -139,6 +143,34 @@ public class BufferVault {
 	}
 
 	/**
+	 * @param b the array to feed with datas
+	 * @param pos where start to read data in internal array
+	 * @param off where to put data in b
+	 * @param len max data len to put in b
+	 * @return real data len readed from internal array, -1 no datas/pos to big
+	 */
+	public synchronized int read(final byte[] b, final int pos, final int off, final int len) {
+		Objects.checkFromIndexSize(off, len, b.length);
+		if (pos >= size) {
+			return -1;
+		} else if (len <= 0) {
+			return 0;
+		}
+		final var lenToRead = Math.min(len, size - pos);
+		System.arraycopy(datas, pos, b, off, lenToRead);
+		return lenToRead;
+	}
+
+	public synchronized int read(final int pos) {
+		if (pos >= size) {
+			return -1;
+		} else if (pos < 0) {
+			throw new IndexOutOfBoundsException("Can't access to negative positions: " + pos);
+		}
+		return datas[pos] & 0xFF;
+	}
+
+	/**
 	 * @return empty if not datas to read.
 	 */
 	public synchronized ByteBuffer readAllToByteBuffer() {
@@ -196,6 +228,111 @@ public class BufferVault {
 			System.arraycopy(datas, readIndex, array, 0, array.length);
 			readIndex += array.length;
 			return array;
+		}
+	}
+
+	public OutputStream asOutputStream() {
+		final var ref = this;
+		return new OutputStream() {
+
+			@Override
+			public void write(final int b) throws IOException {
+				ref.write(new byte[] { (byte) b });
+			}
+
+			@Override
+			public void write(final byte[] b) throws IOException {
+				ref.write(b);
+			}
+
+			@Override
+			public void write(final byte[] b, final int off, final int len) throws IOException {
+				ref.write(b, off, len);
+			}
+		};
+	}
+
+	/**
+	 * Don't close/flush after write.
+	 * Inject direcly the internal byte array. If outStream change it, it will change internally.
+	 * @return this
+	 */
+	public synchronized BufferVault read(final OutputStream outStream) throws IOException {
+		outStream.write(datas, 0, size);
+		return this;
+	}
+
+	/**
+	 * Don't close/flush after read, call available before start read to pre-heat internal buffer
+	 * @param inStream
+	 * @return total transferred bytes
+	 */
+	public synchronized int write(final InputStream inStream, final int bufferSize) throws IOException {
+		ensureBufferSize(inStream.available());
+		/**
+		 * See InputStream.transferTo
+		 */
+		var transferred = 0;
+		final var buffer = new byte[bufferSize];
+		int read;
+		while ((read = inStream.read(buffer, 0, buffer.length)) >= 0) {
+			write(buffer, 0, read);
+			transferred += read;
+		}
+		return transferred;
+	}
+
+	@Override
+	public int hashCode() {
+		var result = 1;
+		for (var pos = 0; pos < size; pos++) {
+			result = 31 * result + datas[pos];
+		}
+		return result;
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		final var other = (BufferVault) obj;
+		return Arrays.equals(datas, 0, size, other.datas, 0, other.size);
+	}
+
+	/**
+	 * Remove all internal datas betwen 0 and pos, add append (copy/write) newDataSource content.
+	 */
+	public synchronized void compactAndAppend(final int pos, final BufferVault inserted) {
+		if (pos < 0) {
+			throw new IllegalArgumentException("Invalid negative pos: " + pos);
+		}
+		justWrite = true;
+
+		if (pos >= size) {
+			clear();
+			write(inserted.datas);
+		} else if (datas.length == 0 || pos == 0) {
+			write(inserted.datas);
+		} else if (pos + inserted.size > datas.length) {
+			final var datasLarger = new byte[size - pos + inserted.size];
+			System.arraycopy(datas, pos, datasLarger, 0, size - pos);
+			datas = datasLarger;
+			System.arraycopy(inserted.datas, 0, datas, size - pos, inserted.size);
+			size = datas.length;
+		} else {
+			final var newDatas = new byte[size - pos + inserted.size];
+			System.arraycopy(datas, pos, newDatas, 0, size - pos);
+			System.arraycopy(inserted.datas, 0, newDatas, size - pos, inserted.size);
+
+			datas = newDatas;
+			size = newDatas.length;
 		}
 	}
 
