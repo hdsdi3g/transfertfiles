@@ -16,8 +16,13 @@
  */
 package tv.hd3g.transfertfiles;
 
+import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.joining;
+
 import java.io.Closeable;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
  * Expected to be thread safe.
@@ -27,7 +32,23 @@ public interface AbstractFileSystem<T extends AbstractFile> extends Closeable {
 
 	void connect();
 
+	/**
+	 * @param path relative path only
+	 */
 	T getFromPath(String path);
+
+	/**
+	 * @param path relative path only
+	 */
+	default T getFromPath(final String path0, final String... pathN) {
+		if (pathN != null && pathN.length > 0) {
+			return getFromPath(path0 + "/" + Stream.of(pathN)
+			        .filter(not(Objects::isNull))
+			        .collect(joining("/")));
+		} else {
+			return getFromPath(path0);
+		}
+	}
 
 	/**
 	 * 65535 bytes

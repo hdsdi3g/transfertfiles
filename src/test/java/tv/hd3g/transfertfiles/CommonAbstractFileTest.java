@@ -91,7 +91,7 @@ class CommonAbstractFileTest {
 	@Test
 	void testHidden() {
 		assertFalse(caf.isHidden());
-		caf = new CAF(fs, parentPath + "/.sub-path");
+		caf = new CAF(fs, parentPath, ".sub-path");
 		assertTrue(caf.isHidden());
 	}
 
@@ -186,7 +186,7 @@ class CommonAbstractFileTest {
 
 	static class CAF extends CommonAbstractFile<AbstractFileSystem<?>> {
 
-		protected CAF(final AbstractFileSystem<?> fileSystem, final String path) {
+		protected CAF(final AbstractFileSystem<?> fileSystem, final String... path) {
 			super(fileSystem, path);
 		}
 

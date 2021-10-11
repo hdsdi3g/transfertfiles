@@ -16,21 +16,31 @@
  */
 package tv.hd3g.transfertfiles;
 
+import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.joining;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import org.apache.commons.io.FilenameUtils;
 
 public abstract class CommonAbstractFile<T extends AbstractFileSystem<?>> implements AbstractFile {
 
 	protected final T fileSystem;
+
+	/**
+	 * Relative path only
+	 */
 	protected final String path;
 
-	protected CommonAbstractFile(final T fileSystem, final String path) {
+	protected CommonAbstractFile(final T fileSystem, final String... path) {
 		this.fileSystem = fileSystem;
-		this.path = AbstractFile.normalizePath(path);
+		this.path = AbstractFile.normalizePath(Stream.of(path)
+		        .filter(not(Objects::isNull))
+		        .collect(joining("/")));
 	}
 
 	@Override

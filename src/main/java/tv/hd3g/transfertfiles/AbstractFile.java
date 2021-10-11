@@ -16,6 +16,9 @@
  */
 package tv.hd3g.transfertfiles;
 
+import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.joining;
+
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -85,6 +88,19 @@ public interface AbstractFile {
 	 * @return moved file
 	 */
 	AbstractFile renameTo(String path);
+
+	/**
+	 * @return moved file
+	 */
+	default AbstractFile renameTo(final String path0, final String... pathN) {
+		if (pathN != null && pathN.length > 0) {
+			return renameTo(path0 + "/" + Stream.of(pathN)
+			        .filter(not(Objects::isNull))
+			        .collect(joining("/")));
+		} else {
+			return renameTo(path0);
+		}
+	}
 
 	/**
 	 * @return a read-only cached data version of this AbstractFile
