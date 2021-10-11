@@ -31,7 +31,11 @@ public abstract class CommonAbstractFileSystem<T extends AbstractFile> implement
 		timeoutDuration = 0;
 	}
 
-	protected String getPathFromRelative(final String path) {
+	/**
+	 * DO NOT LEAK TO USER!
+	 * @return absolute path from server.
+	 */
+	public String getPathFromRelative(final String path) {
 		return normalizePath(basePath + normalizePath(path));
 	}
 

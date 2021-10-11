@@ -91,7 +91,7 @@ class FTPFileTest extends TestFileToolkit<FTPFile> {
 
 		@Override
 		protected FTPFile createNewAbstractFile(final FTPFileSystem fs, final String path) {
-			return new FTPFile(fs, path);
+			return new FTPFile(fs, path, path);
 		}
 
 		@Override

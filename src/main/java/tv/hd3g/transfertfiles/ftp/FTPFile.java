@@ -65,10 +65,12 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 
 	private final FTPClient ftpClient;
 	private String actualCWD;
+	private final String absolutePath;
 
-	FTPFile(final FTPFileSystem fileSystem, final String path) {
-		super(fileSystem, path);
+	FTPFile(final FTPFileSystem fileSystem, final String relativePath, final String absolutePath) {
+		super(fileSystem, relativePath);
 		ftpClient = fileSystem.getClient();
+		this.absolutePath = absolutePath;
 	}
 
 	@Override
@@ -80,14 +82,14 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 		try {
 			final var preferList = FTPListing.LIST.equals(fileSystem.getFtpListing());
 			if (preferList || ftpClient.hasFeature("MLST") == false) {
-				return Stream.of(ftpClient.listFiles(getFullPathNoEndSeparator(path)))
+				return Stream.of(ftpClient.listFiles(getFullPathNoEndSeparator(absolutePath)))
 				        .filter(f -> f.getName().equalsIgnoreCase(getName()))
 				        .findFirst();
 			} else {
-				return Optional.ofNullable(ftpClient.mlistFile(path));
+				return Optional.ofNullable(ftpClient.mlistFile(absolutePath));
 			}
 		} catch (final IOException e) {
-			throw new IORuntimeException(FTP_ERROR_DURING_LIST + path + "\"", e);
+			throw new IORuntimeException(FTP_ERROR_DURING_LIST + absolutePath + "\"", e);
 		}
 	}
 
@@ -112,7 +114,7 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 	public long length() {
 		try {
 			if (ftpClient.hasFeature("SIZE")) {
-				return Optional.ofNullable(ftpClient.getSize(path))
+				return Optional.ofNullable(ftpClient.getSize(absolutePath))
 				        .map(Long::valueOf)
 				        .orElse(0L);
 			} else {
@@ -170,9 +172,9 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 		try {
 			return Optional.ofNullable(fileSystem.getFtpListing())
 			        .orElse(FTPListing.NLST)
-			        .listDirectory(ftpClient, path)
+			        .listDirectory(ftpClient, absolutePath)
 			        .filter(name -> name.equalsIgnoreCase(getName()) == false)
-			        .map(name -> fileSystem.getFromPath(path + "/" + name));
+			        .map(name -> fileSystem.getFromPath(path, name));
 		} catch (final IOException e) {
 			throw new IORuntimeException(FTP_ERROR_DURING_LIST + path + "\"", e);
 		}
@@ -198,11 +200,11 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 				        }
 				        return LIST;
 			        })
-			        .rawListDirectory(ftpClient, path)
+			        .rawListDirectory(ftpClient, absolutePath)
 			        .peek(f -> log.trace("Raw toCachedList # {}", f))// NOSONAR S3864
 			        .filter(f -> f.getName().equalsIgnoreCase(getName()) == false)
 			        .map(f -> makeCachedFileAttributesFromFTPFileRaw(
-			                fileSystem.getFromPath(path + "/" + f.getName()), f));
+			                fileSystem.getFromPath(path, f.getName()), f));
 		} catch (final IOException e) {
 			throw new IORuntimeException(FTP_ERROR_DURING_LIST + path + "\"", e);
 		}
@@ -214,9 +216,9 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 		try {
 			boolean deleteOk;
 			if (directory) {
-				deleteOk = ftpClient.removeDirectory(path);
+				deleteOk = ftpClient.removeDirectory(absolutePath);
 			} else {
-				deleteOk = ftpClient.deleteFile(path);
+				deleteOk = ftpClient.deleteFile(absolutePath);
 			}
 			if (deleteOk == false) {
 				throw new CannotDeleteException(this, directory, new IOException("Can't delete " + fileSystem + path));
@@ -229,7 +231,7 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 	@Override
 	public void mkdir() {
 		try {
-			final var mkdirOk = ftpClient.makeDirectory(path);
+			final var mkdirOk = ftpClient.makeDirectory(absolutePath);
 			if (mkdirOk == false) {
 				throw new IOException("Can't mkdir " + fileSystem + path);
 			}
@@ -241,9 +243,11 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 	@Override
 	public AbstractFile renameTo(final String path) {
 		try {
-			final var renameOk = ftpClient.rename(this.path, path);
+			final var from = absolutePath;
+			final var to = fileSystem.getPathFromRelative(path);
+			final var renameOk = ftpClient.rename(from, to);
 			if (renameOk == false) {
-				throw new IOException("Can't rename form \"" + path + "\" to \"" + path + "\"");
+				throw new IOException("Can't rename form \"" + from + "\" to \"" + to + "\"");
 			}
 			return fileSystem.getFromPath(path);
 		} catch (final IOException e) {
@@ -265,12 +269,12 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 	private void cwdBeforeOperation(final String newPath) throws IOException {
 		actualCWD = ftpClient.printWorkingDirectory();
 
-		if (newPath.equalsIgnoreCase(actualCWD)) {
+		if (absolutePath.equalsIgnoreCase(actualCWD)) {
 			return;
 		}
 
 		log.debug("Do CWD to \"{}\" for {}", actualCWD, this);
-		final var done = ftpClient.changeWorkingDirectory(newPath);
+		final var done = ftpClient.changeWorkingDirectory(fileSystem.getPathFromRelative(newPath));
 		if (done == false) {
 			throw new IOException("Can't change working directory to " + actualCWD
 			                      + ": " + ftpClient.getReplyString());
@@ -346,8 +350,8 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 		}
 	}
 
-	private void copy(final String source,
-	                  final String dest,
+	private void copy(final String relativeSource,
+	                  final String relativeDest,
 	                  final File localFile,
 	                  final TransfertObserver observer,
 	                  final TransfertDirection transfertDirection) {
@@ -361,9 +365,11 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 			var done = false;
 
 			try {
-				ftpClient.setCopyStreamListener(new StoppableListener(source, dest, localFile, observer,
+				ftpClient.setCopyStreamListener(new StoppableListener(relativeSource, relativeDest, localFile, observer,
 				        transfertDirection, thisRef, now, stoppableIOStream, sizeToTransfert));
 
+				final var absSource = fileSystem.getPathFromRelative(relativeSource);
+				final var absDest = fileSystem.getPathFromRelative(relativeDest);
 				final var oTargetFileRef = getCurrentFile();
 				observer.beforeTransfert(localFile, this, transfertDirection);
 
@@ -379,7 +385,7 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 					try (var outputstream = new StoppableOutputStream(new BufferedOutputStream(
 					        new FileOutputStream(localFile), localBufferSize))) {
 						log.info("Download file from FTP \"{}@{}:{}\" to \"{}\" ({} bytes)",
-						        fileSystem.getUsername(), fileSystem.getHost(), source, dest, sizeToTransfert);
+						        fileSystem.getUsername(), fileSystem.getHost(), absSource, absDest, sizeToTransfert);
 						stoppableIOStream.set(outputstream);
 						done = ftpClient.retrieveFile(getName(), outputstream);
 					}
@@ -397,7 +403,7 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 					try (var inputstream = new StoppableInputStream(new BufferedInputStream(
 					        new FileInputStream(localFile), localBufferSize))) {
 						log.info("Upload file \"{}\" ({} bytes) to FTP host \"{}@{}:{}\"",
-						        localFile, sizeToTransfert, fileSystem.getUsername(), fileSystem.getHost(), dest);
+						        localFile, sizeToTransfert, fileSystem.getUsername(), fileSystem.getHost(), absDest);
 						stoppableIOStream.set(inputstream);
 						done = ftpClient.storeFile(storeName, inputstream);
 					}

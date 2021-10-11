@@ -45,6 +45,7 @@ public interface AbstractFile {
 	void sendLocalToAbstract(File localFile, TransfertObserver observer);
 
 	/**
+	 * Relative path only
 	 * @return always with '/' as directory separators
 	 */
 	String getPath();

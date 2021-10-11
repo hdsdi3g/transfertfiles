@@ -270,9 +270,9 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 				throw new IORuntimeException("SSH client was disconnected. Please retry with another instance.");
 			}
 		}
-		final var rpath = getPathFromRelative(path);
-		log.trace("Create new SFTPFile to {}/{}", this, rpath);
-		return new SFTPFile(this, sftpClient, rpath);
+		final var aPath = getPathFromRelative(path);
+		log.trace("Create new SFTPFile to {}/{}", this, aPath);
+		return new SFTPFile(this, sftpClient, path, aPath);
 	}
 
 	public boolean isAbsoluteBasePath() {

@@ -116,7 +116,7 @@ class SFTPFileTest extends TestFileToolkit<SFTPFile> {
 
 		@Override
 		protected SFTPFile createNewAbstractFile(final SFTPFileSystem fs, final String path) {
-			return new SFTPFile(fs, fs.getSFTPClient(), path);
+			return new SFTPFile(fs, fs.getSFTPClient(), path, path);
 		}
 
 		@Override
