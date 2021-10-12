@@ -142,11 +142,14 @@ public class AbstractFileSystemURL implements Closeable {
 	}
 
 	/**
+	 * @param relative path only
 	 * @return after fileSystem.connect
 	 */
 	public AbstractFile getFromPath(final String path) {
+		final var p = normalizePath(path);
+		log.trace("Create new AbstractFile to \"{}\" with \"{}\"", p, fileSystem);
 		fileSystem.connect();
-		return fileSystem.getFromPath(normalizePath(path));
+		return fileSystem.getFromPath(p);
 	}
 
 	/**

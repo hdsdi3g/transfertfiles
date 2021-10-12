@@ -176,7 +176,7 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 			throw new IORuntimeException("FTP client not connected");
 		}
 		final var aPath = getPathFromRelative(path);
-		log.trace("Create new FTPFile to {}/{}", this, aPath);
+		log.trace("Create new FTPFile to \"{}\" relative to \"{}\"", this, aPath);
 		return new FTPFile(this, path, aPath);
 	}
 

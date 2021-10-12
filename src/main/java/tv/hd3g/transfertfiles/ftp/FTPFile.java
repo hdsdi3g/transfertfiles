@@ -176,7 +176,7 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 			        .filter(name -> name.equalsIgnoreCase(getName()) == false)
 			        .map(name -> fileSystem.getFromPath(path, name));
 		} catch (final IOException e) {
-			throw new IORuntimeException(FTP_ERROR_DURING_LIST + path + "\"", e);
+			throw new IORuntimeException(FTP_ERROR_DURING_LIST + absolutePath + "\"", e);
 		}
 	}
 
@@ -206,7 +206,7 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 			        .map(f -> makeCachedFileAttributesFromFTPFileRaw(
 			                fileSystem.getFromPath(path, f.getName()), f));
 		} catch (final IOException e) {
-			throw new IORuntimeException(FTP_ERROR_DURING_LIST + path + "\"", e);
+			throw new IORuntimeException(FTP_ERROR_DURING_LIST + absolutePath + "\"", e);
 		}
 	}
 
