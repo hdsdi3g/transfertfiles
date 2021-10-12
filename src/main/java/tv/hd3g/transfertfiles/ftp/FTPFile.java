@@ -449,7 +449,11 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 	                             final int bufferSize,
 	                             final SizedStoppableCopyCallback copyCallback) {
 		var copied = 0L;
-		try (var inputStream = ftpClient.retrieveFileStream(getName())) {
+		try (var inputStream = ftpClient.retrieveFileStream(absolutePath)) {
+			if (inputStream == null) {
+				throw new IORuntimeException("Can't start FTP download [" + absolutePath + "]: "
+				                             + ftpClient.getReplyString());
+			}
 			final var continueStatus = new AtomicBoolean(false);
 			final SizedStoppableCopyCallback catchCallBack = size -> {
 				final var continueCopy = copyCallback.apply(size);
@@ -470,7 +474,7 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 				log.error("Can't close provided outputStream after use", e);
 			}
 		}
-		checkCompletePendingCommand("FTP download error: ");
+		checkCompletePendingCommand("FTP download error");
 		return copied;
 	}
 
@@ -480,6 +484,10 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 	                           final SizedStoppableCopyCallback copyCallback) {
 		var copied = 0L;
 		try (var outputStream = ftpClient.storeFileStream(getName())) {
+			if (outputStream == null) {
+				throw new IORuntimeException("Can't start FTP upload [" + absolutePath + "]: "
+				                             + ftpClient.getReplyString());
+			}
 			copied = observableCopyStream(inputStream, outputStream, bufferSize, copyCallback);
 		} catch (final IOException e) {
 			throw new IORuntimeException(e);
@@ -490,14 +498,14 @@ public class FTPFile extends CommonAbstractFile<FTPFileSystem> {// NOSONAR S2160
 				log.error("Can't close provided inputStream after use", e);
 			}
 		}
-		checkCompletePendingCommand("FTP upload error: ");
+		checkCompletePendingCommand("FTP upload error");
 		return copied;
 	}
 
 	private void checkCompletePendingCommand(final String message) {
 		try {
 			if (ftpClient.completePendingCommand() == false) {
-				throw new IORuntimeException(message + ftpClient.getReplyString());
+				throw new IORuntimeException(message + " [" + absolutePath + "]: " + ftpClient.getReplyString());
 			}
 		} catch (final IOException e) {
 			throw new IORuntimeException(e);

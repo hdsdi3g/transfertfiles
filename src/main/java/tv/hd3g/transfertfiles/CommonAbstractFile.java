@@ -100,6 +100,8 @@ public abstract class CommonAbstractFile<T extends AbstractFileSystem<?>> implem
 	                                        final OutputStream outputStream,
 	                                        final int bufferSize,
 	                                        final SizedStoppableCopyCallback copyCallback) throws IOException {
+		Objects.requireNonNull(inputStream);
+		Objects.requireNonNull(outputStream);
 		final var buffer = new byte[bufferSize];
 
 		/**
