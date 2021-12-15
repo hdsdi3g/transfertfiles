@@ -28,7 +28,7 @@ import org.mockito.Mockito;
 
 class AbstractFileSystemTest {
 
-	static class DemoAFS implements AbstractFileSystem {
+	static class DemoAFS implements AbstractFileSystem<DemoAbstractFile> {
 
 		@Override
 		public void close() throws IOException {
@@ -39,8 +39,8 @@ class AbstractFileSystemTest {
 		}
 
 		@Override
-		public AbstractFile getFromPath(final String path) {
-			final var af = Mockito.mock(AbstractFile.class);
+		public DemoAbstractFile getFromPath(final String path) {
+			final var af = Mockito.mock(DemoAbstractFile.class);
 			when(af.getPath()).thenReturn(path);
 			return af;
 		}
@@ -59,6 +59,10 @@ class AbstractFileSystemTest {
 		public int reusableHashCode() {
 			return 0;
 		}
+
+	}
+
+	static abstract class DemoAbstractFile implements AbstractFile {
 
 	}
 
@@ -82,7 +86,7 @@ class AbstractFileSystemTest {
 	@Test
 	void testGetFromPathStringNull() {
 		final var a = String.valueOf(System.nanoTime());
-		final var result = demoAFS.getFromPath(a, null);
+		final var result = demoAFS.getFromPath(a);
 		assertNotNull(result);
 		assertEquals(a, result.getPath());
 	}

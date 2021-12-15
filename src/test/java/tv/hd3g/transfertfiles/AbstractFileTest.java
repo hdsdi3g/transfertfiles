@@ -159,7 +159,7 @@ class AbstractFileTest {
 	@Test
 	void testGetFromPathStringNull() {
 		final var a = String.valueOf(System.nanoTime());
-		final var result = demoAF.renameTo(a, null);
+		final var result = demoAF.renameTo(a);
 		assertNotNull(result);
 		assertEquals(a, result.getPath());
 	}
