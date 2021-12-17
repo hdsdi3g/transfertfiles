@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
+import java.io.UncheckedIOException;
 import java.nio.file.InvalidPathException;
 
 import org.apache.commons.io.FileUtils;
@@ -30,8 +31,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import tv.hd3g.commons.IORuntimeException;
 
 class LocalFileSystemTest {
 
@@ -103,9 +102,9 @@ class LocalFileSystemTest {
 	@Test
 	void testLocalFileSystem_error() {
 		final var f0 = new File("zz:/dfdf\\dd");
-		assertThrows(IORuntimeException.class, () -> new LocalFileSystem(f0));
+		assertThrows(UncheckedIOException.class, () -> new LocalFileSystem(f0));
 		final var f1 = new File("a:/thisFileDontExists");
-		assertThrows(IORuntimeException.class, () -> new LocalFileSystem(f1));
+		assertThrows(UncheckedIOException.class, () -> new LocalFileSystem(f1));
 	}
 
 	@Test

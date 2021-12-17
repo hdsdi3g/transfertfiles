@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -42,7 +43,6 @@ import net.schmizz.sshj.xfer.LocalDestFile;
 import net.schmizz.sshj.xfer.LocalFileFilter;
 import net.schmizz.sshj.xfer.LocalSourceFile;
 import net.schmizz.sshj.xfer.TransferListener;
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.AbstractFile;
 import tv.hd3g.transfertfiles.AbstractFileSystem;
 import tv.hd3g.transfertfiles.CachedFileAttributes;
@@ -85,7 +85,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
 				return 0L;
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -94,7 +94,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		try {
 			return sftpClient.statExistence(sftpAbsolutePath) != null;
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -120,7 +120,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
 				return false;
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -132,7 +132,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
 				return false;
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -144,7 +144,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
 				return false;
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -159,7 +159,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
 				return false;
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -171,7 +171,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
 				return 0;
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -192,7 +192,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
 				return CachedFileAttributes.notExists(this);
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -216,7 +216,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			    || e.getMessage().equals("Accessed location is not a directory")) {
 				return Stream.empty();
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -231,7 +231,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			    || e.getMessage().equals("Accessed location is not a directory")) {
 				return Stream.empty();
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -240,7 +240,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		try {
 			sftpClient.mkdirs(sftpAbsolutePath);
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -255,7 +255,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			}
 			return fileSystem.getFromPath(newPath);
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -311,7 +311,8 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 
 				if (transfertDirection == DISTANTTOLOCAL) {
 					if (sftpClient.stat(sftpAbsolutePath).getType() == Type.DIRECTORY) {
-						throw new IORuntimeException("Source file is a directory, can't copy from it");
+						throw new UncheckedIOException(
+						        new IOException("Source file is a directory, can't copy from it"));
 					}
 					sizeToTransfert = sftpClient.size(sftpAbsolutePath);
 					log.info("Download file from SSH host \"{}@{}:{}\" to \"{}\" ({} bytes)",
@@ -331,7 +332,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			log.info("Stop copy SSH file from \"{}\" to \"{}\", ({}/{} bytes)",
 			        source, dest, e.transferred, sizeToTransfert);
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -347,7 +348,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			} catch (final StoppedTransfertException e) {
 				log.debug("Manually stop ssh download", e);
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			} finally {
 				sftpClient.getFileTransfer().setTransferListener(null);
 				try {
@@ -374,7 +375,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			} catch (final StoppedTransfertException e) {
 				log.debug("Manually stop ssh upload", e);
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			} finally {
 				sftpClient.getFileTransfer().setTransferListener(null);
 				try {

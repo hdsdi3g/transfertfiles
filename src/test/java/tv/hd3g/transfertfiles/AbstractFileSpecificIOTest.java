@@ -29,6 +29,7 @@ import static tv.hd3g.transfertfiles.AbstractFile.checkIsSameFileSystem;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,8 +45,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.internal.util.MockUtil;
-
-import tv.hd3g.commons.IORuntimeException;
 
 class AbstractFileSpecificIOTest {
 
@@ -131,7 +130,7 @@ class AbstractFileSpecificIOTest {
 		when(destination.getFileSystem()).thenReturn(fsSource);
 		when(fsSource.reusableHashCode()).thenReturn(hash);
 
-		assertThrows(IORuntimeException.class, () -> checkIsSameFileSystem(source, destination));
+		assertThrows(UncheckedIOException.class, () -> checkIsSameFileSystem(source, destination));
 
 		verify(destination, only()).getFileSystem();
 		verify(fsSource, times(2)).reusableHashCode();

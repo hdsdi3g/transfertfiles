@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
@@ -41,7 +42,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.AbstractFile;
 
 class FTPFileSystemTest {
@@ -151,7 +151,7 @@ class FTPFileSystemTest {
 	void testConnectIsAvaliable_badPassword() {
 		fs = new FTPFileSystem(host, port, username, badPassword, false, "");
 		assertFalse(fs.isAvaliable());
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 		fs.close();
 		assertFalse(fs.isAvaliable());
@@ -161,7 +161,7 @@ class FTPFileSystemTest {
 	void testConnectIsAvaliable_noPassword() {
 		fs = new FTPFileSystem(host, port, username, noPassword, false, "");
 		assertFalse(fs.isAvaliable());
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 		fs.close();
 		assertFalse(fs.isAvaliable());
@@ -184,7 +184,7 @@ class FTPFileSystemTest {
 
 	@Test
 	void testGetFromPath() {
-		assertThrows(IORuntimeException.class, () -> fs.getFromPath("target"));
+		assertThrows(UncheckedIOException.class, () -> fs.getFromPath("target"));
 		fs.connect();
 		final var f = fs.getFromPath("target");
 		assertTrue(f.list()

@@ -23,6 +23,7 @@ import static tv.hd3g.transfertfiles.AbstractFile.normalizePath;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -31,7 +32,6 @@ import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.ftp.FTPESFileSystem;
 import tv.hd3g.transfertfiles.ftp.FTPFileSystem;
 import tv.hd3g.transfertfiles.ftp.FTPSFileSystem;
@@ -114,7 +114,8 @@ public class AbstractFileSystemURL implements Closeable {
 				fileSystem = new FTPESFileSystem(host, port, username, password, passive,
 				        ignoreInvalidCertificates, basePath);
 			} else {
-				throw new IORuntimeException("Can't manage protocol \"" + protocol + "\" in URL: " + toString());
+				throw new UncheckedIOException(
+				        new IOException("Can't manage protocol \"" + protocol + "\" in URL: " + toString()));
 			}
 
 			final var timeout = query.getOrDefault("timeout", List.of()).stream()
@@ -125,7 +126,7 @@ public class AbstractFileSystemURL implements Closeable {
 				fileSystem.setTimeout(timeout, SECONDS);
 			}
 		} catch (final UnknownHostException e) {
-			throw new IORuntimeException("Invalid URL host: \"" + toString() + "\"", e);
+			throw new UncheckedIOException("Invalid URL host: \"" + toString() + "\"", e);
 		}
 	}
 

@@ -17,10 +17,9 @@
 package tv.hd3g.transfertfiles;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 
-import tv.hd3g.commons.IORuntimeException;
-
-public class CannotDeleteException extends IORuntimeException {
+public class CannotDeleteException extends UncheckedIOException {
 
 	private final boolean isDirectory;
 	private final String path;

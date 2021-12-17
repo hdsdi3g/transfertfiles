@@ -18,6 +18,7 @@ package tv.hd3g.transfertfiles.sftp;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.security.PublicKey;
 
 import org.apache.logging.log4j.LogManager;
@@ -26,7 +27,6 @@ import org.apache.logging.log4j.Logger;
 import net.schmizz.sshj.common.KeyType;
 import net.schmizz.sshj.common.SecurityUtils;
 import net.schmizz.sshj.transport.verification.OpenSSHKnownHosts;
-import tv.hd3g.commons.IORuntimeException;
 
 class DefaultKnownHostsVerifier extends OpenSSHKnownHosts {
 	private static final Logger currentlog = LogManager.getLogger();
@@ -46,7 +46,7 @@ class DefaultKnownHostsVerifier extends OpenSSHKnownHosts {
 			write();
 			currentlog.info("SSH: Permanently added '{}' ({}) to the list of known hosts.", hostname, type);
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 		return true;
 	}

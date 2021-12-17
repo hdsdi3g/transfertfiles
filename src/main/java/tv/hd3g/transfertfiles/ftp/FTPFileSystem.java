@@ -17,6 +17,7 @@
 package tv.hd3g.transfertfiles.ftp;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.util.Objects;
 import java.util.Optional;
@@ -28,7 +29,6 @@ import org.apache.commons.net.ftp.FTPReply;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.CommonAbstractFileSystem;
 
 public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
@@ -121,7 +121,7 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 					log.error("Can't disconnect properly after login error", e1);
 				}
 			}
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -152,7 +152,7 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 				ftpClient.disconnect();
 			}
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -173,7 +173,7 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 	@Override
 	public FTPFile getFromPath(final String path) {
 		if (isAvaliable() == false) {
-			throw new IORuntimeException("FTP client not connected");
+			throw new UncheckedIOException(new IOException("FTP client not connected"));
 		}
 		final var aPath = getPathFromRelative(path);
 		log.trace("Create new FTPFile to \"{}\" relative to \"{}\"", this, aPath);

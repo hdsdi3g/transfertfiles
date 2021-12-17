@@ -32,6 +32,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -43,7 +44,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.AbstractFile;
 import tv.hd3g.transfertfiles.CannotDeleteException;
 import tv.hd3g.transfertfiles.CommonAbstractFile;
@@ -86,7 +86,8 @@ public class LocalFile extends CommonAbstractFile<LocalFileSystem> {// NOSONAR S
 	                  final TransfertObserver observer,
 	                  final TransfertDirection transfertDirection) {
 		if (source.isDirectory()) {
-			throw new IORuntimeException("Can't copy directories directly");
+			throw new UncheckedIOException(
+			        new IOException("Can't copy directories directly"));
 		}
 
 		File dest;
@@ -125,7 +126,7 @@ public class LocalFile extends CommonAbstractFile<LocalFileSystem> {// NOSONAR S
 				}
 			}
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 
 		if (stopped) {
@@ -142,7 +143,7 @@ public class LocalFile extends CommonAbstractFile<LocalFileSystem> {// NOSONAR S
 		try (var inputStream = new BufferedInputStream(new FileInputStream(internalFile), bufferSize)) {
 			return observableCopyStream(inputStream, outputStream, bufferSize, copyCallback);
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		} finally {
 			try {
 				outputStream.close();
@@ -159,7 +160,7 @@ public class LocalFile extends CommonAbstractFile<LocalFileSystem> {// NOSONAR S
 		try (var outputStream = new BufferedOutputStream(new FileOutputStream(internalFile), bufferSize)) {
 			return observableCopyStream(inputStream, outputStream, bufferSize, copyCallback);
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		} finally {
 			try {
 				inputStream.close();
@@ -216,7 +217,7 @@ public class LocalFile extends CommonAbstractFile<LocalFileSystem> {// NOSONAR S
 			        .map(BasicFileAttributes::isOther)
 			        .orElse(false);
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -244,20 +245,22 @@ public class LocalFile extends CommonAbstractFile<LocalFileSystem> {// NOSONAR S
 		try {
 			FileUtils.forceMkdir(internalFile);
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
 	@Override
 	public AbstractFile renameTo(final String path) {
 		if (exists() == false) {
-			throw new IORuntimeException("Can't move non-existent file/dir \"" + internalFile + "\"");
+			throw new UncheckedIOException(
+			        new IOException("Can't move non-existent file/dir \"" + internalFile + "\""));
 		}
 		final var newRef = fileSystem.getFromPath(path);
 		final var dest = newRef.internalFile;
 		log.debug("Rename local file \"{}\" to \"{}\", as \"{}\"", internalFile, dest, path);
 		if (internalFile.renameTo(dest) == false) {
-			throw new IORuntimeException("Can't move \"" + internalFile + "\" to \"" + dest + "\"");
+			throw new UncheckedIOException(
+			        new IOException("Can't move \"" + internalFile + "\" to \"" + dest + "\""));
 		}
 		return newRef;
 	}

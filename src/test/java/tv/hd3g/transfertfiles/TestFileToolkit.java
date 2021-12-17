@@ -44,6 +44,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.Arrays;
@@ -63,7 +64,6 @@ import org.junit.jupiter.api.TestFactory;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection;
 import tv.hd3g.transfertfiles.ftp.FTPFileSystem;
 
@@ -251,7 +251,7 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		tests.put("testCopyAbstractToLocal",
 		        d -> {
 			        final var dest = new File(root, "destfileCopy");
-			        assertThrows(IORuntimeException.class, () -> d.copyAbstractToLocal(dest, to));
+			        assertThrows(UncheckedIOException.class, () -> d.copyAbstractToLocal(dest, to));
 		        });
 		tests.put("testSendLocalToAbstract",
 		        d -> {
@@ -303,7 +303,7 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		tests.put("testMkdir", f -> {
 			assertTrue(file.exists());
 			assertFalse(file.isDirectory());
-			assertThrows(IORuntimeException.class, () -> f.mkdir());
+			assertThrows(UncheckedIOException.class, () -> f.mkdir());
 		});
 		tests.put("testRenameTo", f -> {
 			assertTrue(f.exists());
@@ -401,7 +401,7 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		tests.put("testToCachedList",
 		        f -> assertEquals(0, f.toCachedList().count()));
 		tests.put("testDelete", f -> {
-			assertThrows(IORuntimeException.class, () -> f.delete());
+			assertThrows(UncheckedIOException.class, () -> f.delete());
 		});
 		tests.put("testMkdir", f -> {
 			assertFalse(file.exists());
@@ -412,16 +412,16 @@ public abstract class TestFileToolkit<T extends AbstractFile> { // NOSONAR S5786
 		});
 		tests.put("testRenameTo", f -> {
 			assertFalse(f.exists());
-			assertThrows(IORuntimeException.class, () -> f.renameTo("/thisnewdir"));
+			assertThrows(UncheckedIOException.class, () -> f.renameTo("/thisnewdir"));
 		});
 		tests.put("testCopyAbstractToLocal", f -> {
 			final var localFileCopy = new File("target/destfile");
-			assertThrows(IORuntimeException.class,
+			assertThrows(UncheckedIOException.class,
 			        () -> f.copyAbstractToLocal(localFileCopy, to));
 		});
 		tests.put("testSendLocalToAbstract", f -> {
 			final var localFileCopy = new File("target/destfile");
-			assertThrows(IORuntimeException.class,
+			assertThrows(UncheckedIOException.class,
 			        () -> f.sendLocalToAbstract(localFileCopy, to));
 		});
 

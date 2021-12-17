@@ -34,6 +34,7 @@ import static tv.hd3g.transfertfiles.DataExchangeInOutStream.State.WRITER_MANUAL
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -54,7 +55,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.DataExchangeInOutStream.State;
 import tv.hd3g.transfertfiles.filters.DataExchangeFilter;
 
@@ -79,7 +79,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -105,7 +105,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -131,7 +131,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput, half, dataInput.length - half);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -159,7 +159,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput, half, dataInput.length - half);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -184,7 +184,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -211,7 +211,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -279,7 +279,7 @@ class DataExchangeInOutStreamTest {
 				}
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -327,7 +327,7 @@ class DataExchangeInOutStreamTest {
 				}
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -529,7 +529,7 @@ class DataExchangeInOutStreamTest {
 				try {
 					sourceTargetStream.write(dataInput);
 				} catch (final IOException e) {
-					throw new IORuntimeException(e);
+					throw new UncheckedIOException(e);
 				}
 			});
 			read(destOriginStream, dataOutput);
@@ -542,7 +542,7 @@ class DataExchangeInOutStreamTest {
 			}
 			assertNotNull(e);
 			assertTrue(e instanceof ExecutionException);
-			assertTrue(e.getCause() instanceof IORuntimeException);
+			assertTrue(e.getCause() instanceof UncheckedIOException);
 			assertTrue(e.getCause().getCause() instanceof IOException);
 			assertEquals(STOPPED_BY_USER, exchange.getState());
 		}
@@ -731,7 +731,7 @@ class DataExchangeInOutStreamTest {
 			try {
 				exchange.getDestTargetStream().write(dataInput);
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -744,7 +744,7 @@ class DataExchangeInOutStreamTest {
 			writeError = e;
 		}
 		assertNotNull(writeError);
-		assertTrue(writeError.getCause() instanceof IORuntimeException);
+		assertTrue(writeError.getCause() instanceof UncheckedIOException);
 		assertTrue(writeError.getCause().getCause() instanceof IOException);
 		assertEquals("Stopped OutputStream (writer) by filter", writeError.getCause().getCause().getMessage());
 
@@ -782,7 +782,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -795,7 +795,7 @@ class DataExchangeInOutStreamTest {
 			writeError = e;
 		}
 		assertNotNull(writeError);
-		assertTrue(writeError.getCause() instanceof IORuntimeException);
+		assertTrue(writeError.getCause() instanceof UncheckedIOException);
 		assertTrue(writeError.getCause().getCause() instanceof IOException);
 		assertEquals("Stopped OutputStream (writer) by filter", writeError.getCause().getCause().getMessage());
 
@@ -826,7 +826,7 @@ class DataExchangeInOutStreamTest {
 			try {
 				exchange.getDestTargetStream().write(dataInput);
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -839,7 +839,7 @@ class DataExchangeInOutStreamTest {
 			writeError = e;
 		}
 		assertNotNull(writeError);
-		assertTrue(writeError.getCause() instanceof IORuntimeException);
+		assertTrue(writeError.getCause() instanceof UncheckedIOException);
 		assertTrue(writeError.getCause().getCause() instanceof IOException);
 		assertEquals("Closed OutputStream (writer) caused by filter error",
 		        writeError.getCause().getCause().getMessage());
@@ -953,7 +953,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -991,7 +991,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -1048,7 +1048,7 @@ class DataExchangeInOutStreamTest {
 				exchange.getDestTargetStream().write(dataInput);
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 
@@ -1061,7 +1061,7 @@ class DataExchangeInOutStreamTest {
 		}
 		assertNotNull(capturedE);
 		assertTrue(capturedE instanceof ExecutionException);
-		assertTrue(capturedE.getCause() instanceof IORuntimeException);
+		assertTrue(capturedE.getCause() instanceof UncheckedIOException);
 		assertTrue(capturedE.getCause().getCause() instanceof IOException);
 
 		assertEquals(2000, copiedSize);
@@ -1117,7 +1117,7 @@ class DataExchangeInOutStreamTest {
 			try {
 				read(exchange.getSourceOriginStream(), dataOutput);
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		}).orTimeout(10, TimeUnit.MILLISECONDS);
 		assertThrows(ExecutionException.class, () -> readerCF.get());
@@ -1138,7 +1138,7 @@ class DataExchangeInOutStreamTest {
 				assertThrows(IllegalStateException.class, () -> exchange.getTransfertStats(filter0));
 				exchange.getDestTargetStream().close();
 			} catch (final IOException e) {
-				throw new IORuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 

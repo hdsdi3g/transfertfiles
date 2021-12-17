@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.util.Map;
 
@@ -41,8 +42,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import tv.hd3g.commons.IORuntimeException;
 
 class FTPFileSystemBadPassiveTest {
 
@@ -188,10 +187,10 @@ class FTPFileSystemBadPassiveTest {
 	@Test
 	void testGetFromPath_ForcePassive() {
 		fs = new FTPFileSystem(host, port, username, goodPassword, true, "");
-		assertThrows(IORuntimeException.class, () -> fs.getFromPath("target"));
+		assertThrows(UncheckedIOException.class, () -> fs.getFromPath("target"));
 		fs.connect();
 		final var f = fs.getFromPath("target");
-		assertThrows(IORuntimeException.class, () -> f.list());
+		assertThrows(UncheckedIOException.class, () -> f.list());
 		fs.close();
 	}
 

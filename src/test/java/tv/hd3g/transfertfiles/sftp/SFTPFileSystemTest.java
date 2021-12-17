@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
@@ -56,7 +57,6 @@ import com.jcraft.jsch.KeyPair;
 
 import net.schmizz.sshj.userauth.keyprovider.OpenSSHKeyFile;
 import net.schmizz.sshj.userauth.password.PasswordUtils;
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.AbstractFile;
 
 class SFTPFileSystemTest {
@@ -218,7 +218,7 @@ class SFTPFileSystemTest {
 		fs.manuallyAddPrivatekeyAuth(clientPrivateKeyFile.getParentFile());
 		assertThrows(NullPointerException.class, () -> fs.manuallyAddPrivatekeyAuth(null));
 		final var notExists = new File("nopeFile");
-		assertThrows(IORuntimeException.class, () -> fs.manuallyAddPrivatekeyAuth(notExists));
+		assertThrows(UncheckedIOException.class, () -> fs.manuallyAddPrivatekeyAuth(notExists));
 	}
 
 	@Test
@@ -252,13 +252,13 @@ class SFTPFileSystemTest {
 		fs = new SFTPFileSystem(InetAddress.getByName("127.255.255.255"), port, username, "");
 		fs.getClient().setTimeout(1);
 		fs.getClient().setConnectTimeout(1);
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 
 		fs = new SFTPFileSystem(host, 1, username, "");
 		fs.getClient().setTimeout(1);
 		fs.getClient().setConnectTimeout(1);
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 	}
 
@@ -270,14 +270,14 @@ class SFTPFileSystemTest {
 	@Test
 	void testConnect_auth_noAuth() {
 		assertTrue(port > 0);
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 	}
 
 	@Test
 	void testConnect_auth_badPassword() {
 		fs.setPasswordAuth(badPassword);
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		fs.close();
 		assertFalse(fs.isAvaliable());
 	}
@@ -305,7 +305,7 @@ class SFTPFileSystemTest {
 	@Test
 	void testConnect_auth_pubkey_password_bad() throws IOException {
 		fs.manuallyAddPrivatekeyAuth(clientPasswordProtectedPrivateKeyFile, badPassword);
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 		fs.close();
 		assertFalse(fs.isAvaliable());
@@ -323,7 +323,7 @@ class SFTPFileSystemTest {
 	@Test
 	void testConnect_auth_pubkey_password_no() throws IOException {
 		fs.manuallyAddPrivatekeyAuth(clientPasswordProtectedPrivateKeyFile);
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 		fs.close();
 		assertFalse(fs.isAvaliable());
@@ -337,11 +337,11 @@ class SFTPFileSystemTest {
 	@Test
 	void testIsAvaliable_badLogin() {
 		fs.setPasswordAuth(badPassword);
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 
 		fs.setPasswordAuth(password.toCharArray());
-		assertThrows(IORuntimeException.class, () -> fs.connect());
+		assertThrows(UncheckedIOException.class, () -> fs.connect());
 		assertFalse(fs.isAvaliable());
 		fs.close();
 		assertFalse(fs.isAvaliable());
@@ -398,11 +398,11 @@ class SFTPFileSystemTest {
 
 	@Test
 	void testGetFromPath_disconnected() {
-		assertThrows(IORuntimeException.class, () -> fs.getFromPath("."));
+		assertThrows(UncheckedIOException.class, () -> fs.getFromPath("."));
 		fs.setPasswordAuth(password.toCharArray());
 		fs.connect();
 		fs.close();
-		assertThrows(IORuntimeException.class, () -> fs.getFromPath("."));
+		assertThrows(UncheckedIOException.class, () -> fs.getFromPath("."));
 	}
 
 	@Test

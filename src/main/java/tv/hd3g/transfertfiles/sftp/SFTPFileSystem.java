@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.toUnmodifiableList;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -35,7 +36,6 @@ import org.apache.logging.log4j.Logger;
 import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.sftp.SFTPClient;
 import net.schmizz.sshj.userauth.keyprovider.KeyProvider;
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.CommonAbstractFileSystem;
 
 public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
@@ -81,7 +81,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 		try {
 			client.addHostKeyVerifier(new DefaultKnownHostsVerifier(knownHostFile));
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -136,7 +136,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 				return client.loadKeys(privateKey.getPath());
 			}
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -146,7 +146,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 	public void manuallyAddPrivatekeyAuth(final File privateKey, final char[] keyPassword) {
 		Objects.requireNonNull(privateKey);
 		if (privateKey.exists() == false) {
-			throw new IORuntimeException(new FileNotFoundException(privateKey.getPath()));
+			throw new UncheckedIOException(new FileNotFoundException(privateKey.getPath()));
 		} else if (privateKey.isDirectory()) {
 			authKeys.addAll(Stream.of("id_rsa", "id_dsa", "id_ed25519", "id_ecdsa")
 			        .map(f -> new File(privateKey, f))
@@ -195,7 +195,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 		if (isAvaliable()) {
 			return;
 		} else if (wasConnected == true) {
-			throw new IORuntimeException("Client is not avaliable to use");
+			throw new UncheckedIOException(new IOException("Client is not avaliable to use"));
 		}
 		log.debug("Start to connect to {}", this);
 		wasConnected = true;
@@ -216,7 +216,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 			log.info("Connected to {}", this);
 			createANewSFTPClient();
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -244,7 +244,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 			}
 			sftpClient.getFileTransfer().setPreserveAttributes(false);
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -257,7 +257,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 			}
 			sftpClient = null;
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -265,9 +265,11 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 	public synchronized SFTPFile getFromPath(final String path) {
 		if (isAvaliable() == false) {
 			if (wasConnected == false) {
-				throw new IORuntimeException("Non-active SSH client, try to connect before");
+				throw new UncheckedIOException(
+				        new IOException("Non-active SSH client, try to connect before"));
 			} else {
-				throw new IORuntimeException("SSH client was disconnected. Please retry with another instance.");
+				throw new UncheckedIOException(
+				        new IOException("SSH client was disconnected. Please retry with another instance."));
 			}
 		}
 		final var aPath = getPathFromRelative(path);

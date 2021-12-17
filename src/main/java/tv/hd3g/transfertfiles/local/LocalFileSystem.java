@@ -18,6 +18,7 @@ package tv.hd3g.transfertfiles.local;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Objects;
@@ -25,7 +26,6 @@ import java.util.Objects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.AbstractFile;
 import tv.hd3g.transfertfiles.CommonAbstractFileSystem;
 
@@ -40,10 +40,11 @@ public class LocalFileSystem extends CommonAbstractFileSystem<LocalFile> {
 			this.relativePath = Objects.requireNonNull(relativePath).getCanonicalFile()
 			        .toPath().toRealPath().normalize().toFile();
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 		if (relativePath.exists() == false || relativePath.isDirectory() == false || relativePath.canRead() == false) {
-			throw new IORuntimeException("Can't access to \"" + relativePath + "\" directory");
+			throw new UncheckedIOException(
+			        new IOException("Can't access to \"" + relativePath + "\" directory"));
 		}
 		log.debug("Init LocalFileSystem with {}", relativePath);
 	}
@@ -76,11 +77,12 @@ public class LocalFileSystem extends CommonAbstractFileSystem<LocalFile> {
 				realPath = file.getPath();
 			}
 		} catch (final IOException e) {
-			throw new IORuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 		final var rootPath = relativePath.getPath();
 		if (realPath.startsWith(rootPath) == false) {
-			throw new IORuntimeException("Invalid root path for \"" + file.getPath() + "\"");
+			throw new UncheckedIOException(
+			        new IOException("Invalid root path for \"" + file.getPath() + "\""));
 		}
 		return new LocalFile(file, this);
 	}

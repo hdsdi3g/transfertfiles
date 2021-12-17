@@ -20,15 +20,16 @@ import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.joining;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
-import tv.hd3g.commons.IORuntimeException;
 import tv.hd3g.transfertfiles.filters.DataExchangeFilter;
 import tv.hd3g.transfertfiles.local.LocalFileSystem;
 
@@ -175,8 +176,9 @@ public interface AbstractFile {
 			return;
 		}
 		if (fromFs.reusableHashCode() == toFs.reusableHashCode()) {
-			throw new IORuntimeException(
-			        "Can't use same FileSystem instances between to AbstractFiles. Please start a new FS instance for one of the two AbstractFile");
+			throw new UncheckedIOException(
+			        new IOException(
+			                "Can't use same FileSystem instances between to AbstractFiles. Please start a new FS instance for one of the two AbstractFile"));
 		}
 	}
 
