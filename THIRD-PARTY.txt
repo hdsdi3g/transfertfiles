@@ -55,4 +55,4 @@ Lists of 56 third-party dependencies.
      (Public Domain) XZ for Java (org.tukaani:xz:1.8 - https://tukaani.org/xz/java.html)
      (Apache License, Version 2.0) SnakeYAML (org.yaml:snakeyaml:1.23 - http://www.snakeyaml.org)
      (GNU Lesser General Public License, Version 3) CodePolicyValidation (tv.hd3g.commons:codepolicyvalidation:1.0.2 - https://github.com/hdsdi3g/codepolicyvalidation)
-     (GNU Lesser General Public License, Version 3) Commons Interfaces (tv.hd3g.commons:interfaces:6.1.1 - https://github.com/hdsdi3g/mvn-starter)
+     (GNU Lesser General Public License, Version 3) Commons Interfaces (tv.hd3g.commons:interfaces:7.0.0 - https://github.com/hdsdi3g/mvn-starter)
