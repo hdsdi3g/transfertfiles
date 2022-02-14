@@ -68,65 +68,69 @@ public class AbstractFileSystemURL implements Closeable {
 	 *        Add "timeout=5" for set 5 seconds of connect/socket timeout
 	 */
 	public AbstractFileSystemURL(final String ressourceURL) {
-		try {
-			final var url = new URLAccess(ressourceURL);
+		final var url = new URLAccess(ressourceURL);
 
-			final var protocol = url.getProtocol();
-			basePath = normalizePath(Optional.ofNullable(url.getPath()).orElse("/"));
-			final var host = InetAddress.getByName(Optional.ofNullable(url.getHost()).orElse("localhost"));
-			final var query = url.getOptionZone();
-			final var username = url.getUsername();
-			protectedRessourceURL = url.getProtectedRessourceURL();
-			final var password = url.getPassword();
-			final var port = url.getPort();
+		final var protocol = url.getProtocol();
+		basePath = normalizePath(Optional.ofNullable(url.getPath()).orElse("/"));
+		final var host = resolveHostname(url);
+		final var query = url.getOptionZone();
+		final var username = url.getUsername();
+		protectedRessourceURL = url.getProtectedRessourceURL();
+		final var password = url.getPassword();
+		final var port = url.getPort();
 
-			final var passive = query.containsKey("active") == false;
-			final var ignoreInvalidCertificates = query.containsKey("ignoreInvalidCertificates");
-			final var keys = query.getOrDefault("key", List.of()).stream()
-			        .map(File::new)
-			        .filter(File::exists)
-			        .collect(toUnmodifiableList());
+		final var passive = query.containsKey("active") == false;
+		final var ignoreInvalidCertificates = query.containsKey("ignoreInvalidCertificates");
+		final var keys = query.getOrDefault("key", List.of()).stream()
+		        .map(File::new)
+		        .filter(File::exists)
+		        .collect(toUnmodifiableList());
 
-			if (protocol.contentEquals("file")) {
-				log.debug("Init URL LocalFileSystem: {}", this::toString);
-				fileSystem = new LocalFileSystem(new File(basePath));
-			} else if (protocol.contentEquals("sftp")) {
-				log.debug("Init URL SFTPFileSystem: {}", this::toString);
-				fileSystem = new SFTPFileSystem(host, port, username, basePath);
-				final var sFTPfileSystem = (SFTPFileSystem) fileSystem;
+		if (protocol.contentEquals("file")) {
+			log.debug("Init URL LocalFileSystem: {}", this::toString);
+			fileSystem = new LocalFileSystem(new File(basePath));
+		} else if (protocol.contentEquals("sftp")) {
+			log.debug("Init URL SFTPFileSystem: {}", this::toString);
+			fileSystem = new SFTPFileSystem(host, port, username, basePath);
+			final var sFTPfileSystem = (SFTPFileSystem) fileSystem;
 
-				if (keys.isEmpty()) {
-					if (password.length > 0) {
-						sFTPfileSystem.setPasswordAuth(password);
-					}
-				} else {
-					keys.forEach(privateKey -> sFTPfileSystem.manuallyAddPrivatekeyAuth(privateKey, password));
+			if (keys.isEmpty()) {
+				if (password.length > 0) {
+					sFTPfileSystem.setPasswordAuth(password);
 				}
-			} else if (protocol.contentEquals("ftp")) {
-				log.debug("Init URL FTPFileSystem: {}", this::toString);
-				fileSystem = new FTPFileSystem(host, port, username, password, passive, basePath);
-			} else if (protocol.contentEquals("ftps")) {
-				log.debug("Init URL FTPSFileSystem: {}", this::toString);
-				fileSystem = new FTPSFileSystem(host, port, username, password, passive,
-				        ignoreInvalidCertificates, basePath);
-			} else if (protocol.contentEquals("ftpes")) {
-				log.debug("Init URL FTPESFileSystem: {}", this::toString);
-				fileSystem = new FTPESFileSystem(host, port, username, password, passive,
-				        ignoreInvalidCertificates, basePath);
 			} else {
-				throw new UncheckedIOException(
-				        new IOException("Can't manage protocol \"" + protocol + "\" in URL: " + toString()));
+				keys.forEach(privateKey -> sFTPfileSystem.manuallyAddPrivatekeyAuth(privateKey, password));
 			}
+		} else if (protocol.contentEquals("ftp")) {
+			log.debug("Init URL FTPFileSystem: {}", this::toString);
+			fileSystem = new FTPFileSystem(host, port, username, password, passive, basePath);
+		} else if (protocol.contentEquals("ftps")) {
+			log.debug("Init URL FTPSFileSystem: {}", this::toString);
+			fileSystem = new FTPSFileSystem(host, port, username, password, passive,
+			        ignoreInvalidCertificates, basePath);
+		} else if (protocol.contentEquals("ftpes")) {
+			log.debug("Init URL FTPESFileSystem: {}", this::toString);
+			fileSystem = new FTPESFileSystem(host, port, username, password, passive,
+			        ignoreInvalidCertificates, basePath);
+		} else {
+			throw new UncheckedIOException(
+			        new IOException("Can't manage protocol \"" + protocol + "\" in URL: " + toString()));
+		}
 
-			final var timeout = query.getOrDefault("timeout", List.of()).stream()
-			        .map(Integer::valueOf)
-			        .findFirst()
-			        .orElse(0);
-			if (timeout > 0) {
-				fileSystem.setTimeout(timeout, SECONDS);
-			}
+		final var timeout = query.getOrDefault("timeout", List.of()).stream()
+		        .map(Integer::valueOf)
+		        .findFirst()
+		        .orElse(0);
+		if (timeout > 0) {
+			fileSystem.setTimeout(timeout, SECONDS);
+		}
+	}
+
+	private InetAddress resolveHostname(final URLAccess url) {
+		try {
+			return InetAddress.getByName(Optional.ofNullable(url.getHost()).orElse("localhost"));
 		} catch (final UnknownHostException e) {
-			throw new UncheckedIOException("Invalid URL host: \"" + toString() + "\"", e);
+			throw new UncheckedIOException("Can't resolve hostname: \"" + url.getHost() + "\"", e);
 		}
 	}
 

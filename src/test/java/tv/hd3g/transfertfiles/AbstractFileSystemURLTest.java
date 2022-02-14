@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.UnknownHostException;
 
 import org.junit.jupiter.api.AfterEach;
@@ -152,6 +154,17 @@ class AbstractFileSystemURLTest {
 	void testSetInvalidTimeout() {
 		final var url = "file://localhost/" + new File("").getAbsolutePath() + "?timeout=NOPE";
 		assertThrows(NumberFormatException.class, () -> new AbstractFileSystemURL(url));
+	}
+
+	@Test
+	void testBadResolve() throws IOException {
+		final var url = "ftpes://this-host-dont-exists/";
+		try (var afs = new AbstractFileSystemURL(url)) {
+			fail("Expect exception");
+		} catch (final UncheckedIOException e) {
+			assertTrue(e.getCause().getClass().isAssignableFrom(UnknownHostException.class));
+			assertEquals("Can't resolve hostname: \"this-host-dont-exists\"", e.getMessage());
+		}
 	}
 
 	static class TestAbstractFileSystemURL extends AbstractFileSystemURL {
