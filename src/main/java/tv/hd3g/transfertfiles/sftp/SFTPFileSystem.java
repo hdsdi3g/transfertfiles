@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -79,6 +80,7 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 		                          + File.separator + ".ssh" + File.separator + "known_hosts";
 		final var knownHostFile = new File(System.getProperty("ssh.knownhosts", defaultKhFile));
 		try {
+			FileUtils.forceMkdirParent(knownHostFile);
 			client.addHostKeyVerifier(new DefaultKnownHostsVerifier(knownHostFile));
 		} catch (final IOException e) {
 			throw new UncheckedIOException(e);
