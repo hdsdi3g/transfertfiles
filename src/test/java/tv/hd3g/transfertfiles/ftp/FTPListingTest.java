@@ -17,7 +17,6 @@
 package tv.hd3g.transfertfiles.ftp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.eq;
 
 import java.io.IOException;
 
@@ -59,11 +58,11 @@ class FTPListingTest {
 		var stream = FTPListing.NLST.listDirectory(client, path);
 		assertEquals(0, stream.count());
 
-		Mockito.when(client.listNames(eq(path))).thenReturn(new String[] { result });
+		Mockito.when(client.listNames(path)).thenReturn(new String[] { result });
 		stream = FTPListing.NLST.listDirectory(client, path);
 		assertEquals(result, stream.findFirst().get());
 
-		Mockito.verify(client, Mockito.times(2)).listNames(eq(path));
+		Mockito.verify(client, Mockito.times(2)).listNames(path);
 	}
 
 	@Test
@@ -71,11 +70,11 @@ class FTPListingTest {
 		var stream = FTPListing.LIST.listDirectory(client, path);
 		assertEquals(0, stream.count());
 
-		Mockito.when(client.listFiles(eq(path))).thenReturn(new org.apache.commons.net.ftp.FTPFile[] { fileEntry });
+		Mockito.when(client.listFiles(path)).thenReturn(new org.apache.commons.net.ftp.FTPFile[] { fileEntry });
 		stream = FTPListing.LIST.listDirectory(client, path);
 		assertEquals(result, stream.findFirst().get());
 
-		Mockito.verify(client, Mockito.times(2)).listFiles(eq(path));
+		Mockito.verify(client, Mockito.times(2)).listFiles(path);
 		Mockito.verify(fileEntry, Mockito.times(2)).getName();
 	}
 
@@ -84,11 +83,11 @@ class FTPListingTest {
 		var stream = FTPListing.MLSD.listDirectory(client, path);
 		assertEquals(0, stream.count());
 
-		Mockito.when(client.mlistDir(eq(path))).thenReturn(new org.apache.commons.net.ftp.FTPFile[] { fileEntry });
+		Mockito.when(client.mlistDir(path)).thenReturn(new org.apache.commons.net.ftp.FTPFile[] { fileEntry });
 		stream = FTPListing.MLSD.listDirectory(client, path);
 		assertEquals(result, stream.findFirst().get());
 
-		Mockito.verify(client, Mockito.times(2)).mlistDir(eq(path));
+		Mockito.verify(client, Mockito.times(2)).mlistDir(path);
 		Mockito.verify(fileEntry, Mockito.times(2)).getName();
 	}
 

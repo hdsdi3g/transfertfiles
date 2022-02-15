@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.verify;
@@ -83,9 +82,9 @@ class CommonAbstractFileTest {
 
 	@Test
 	void testGetParent() {
-		Mockito.when(fs.getFromPath(eq(parentPath))).thenReturn(parent);
+		Mockito.when(fs.getFromPath(parentPath)).thenReturn(parent);
 		assertEquals(parent, caf.getParent());
-		Mockito.verify(fs, only()).getFromPath(eq(parentPath));
+		Mockito.verify(fs, only()).getFromPath(parentPath);
 	}
 
 	@Test
@@ -156,9 +155,9 @@ class CommonAbstractFileTest {
 		final var totalSize = (int) observableCopyStream(inputStream, outputStream, 10, copyCallback);
 
 		assertEquals(30, totalSize);
-		verify(copyCallback, Mockito.times(1)).apply(eq(10L));
-		verify(copyCallback, Mockito.times(1)).apply(eq(20L));
-		verify(copyCallback, Mockito.times(1)).apply(eq(30L));
+		verify(copyCallback, Mockito.times(1)).apply(10L);
+		verify(copyCallback, Mockito.times(1)).apply(20L);
+		verify(copyCallback, Mockito.times(1)).apply(30L);
 		verifyNoMoreInteractions(copyCallback);
 
 		assertTrue(Arrays.equals(sourceDatas, 0, totalSize, outputStream.toByteArray(), 0, totalSize));

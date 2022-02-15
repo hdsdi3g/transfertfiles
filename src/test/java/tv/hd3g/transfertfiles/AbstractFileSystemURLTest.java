@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -203,12 +202,12 @@ class AbstractFileSystemURLTest {
 		void testGetFromPath() {
 			final var path = String.valueOf(System.nanoTime());
 			final var fullPath = "/" + path;
-			when(fileSystem.getFromPath(eq(fullPath))).thenReturn(f);
+			when(fileSystem.getFromPath(fullPath)).thenReturn(f);
 			final var p = afs.getFromPath(path);
 			assertNotNull(p);
 			assertEquals(f, p);
 			verify(fileSystem, times(1)).connect();
-			verify(fileSystem, times(1)).getFromPath(eq(fullPath));
+			verify(fileSystem, times(1)).getFromPath(fullPath);
 		}
 
 		@Test
@@ -218,12 +217,12 @@ class AbstractFileSystemURLTest {
 
 		@Test
 		void testGetRootPath() {
-			when(fileSystem.getFromPath(eq("/"))).thenReturn(f);
+			when(fileSystem.getFromPath("/")).thenReturn(f);
 			final var r = afs.getRootPath();
 			assertNotNull(r);
 			assertEquals(f, r);
 			verify(fileSystem, times(1)).connect();
-			verify(fileSystem, times(1)).getFromPath(eq("/"));
+			verify(fileSystem, times(1)).getFromPath("/");
 		}
 
 		@Test
