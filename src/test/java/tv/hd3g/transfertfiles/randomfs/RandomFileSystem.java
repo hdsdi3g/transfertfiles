@@ -17,6 +17,7 @@
 package tv.hd3g.transfertfiles.randomfs;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Random;
 
 import tv.hd3g.transfertfiles.CommonAbstractFileSystem;
@@ -53,5 +54,15 @@ public class RandomFileSystem extends CommonAbstractFileSystem<RandomFile> {
 
 	@Override
 	public void close() throws IOException {
+	}
+
+	@Override
+	public InetAddress getHost() {
+		return null;
+	}
+
+	@Override
+	public String getUsername() {
+		return null;
 	}
 }

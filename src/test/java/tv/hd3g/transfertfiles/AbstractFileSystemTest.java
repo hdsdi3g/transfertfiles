@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.net.InetAddress;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,15 @@ class AbstractFileSystemTest {
 			return 0;
 		}
 
+		@Override
+		public InetAddress getHost() {
+			return null;
+		}
+
+		@Override
+		public String getUsername() {
+			return null;
+		}
 	}
 
 	static abstract class DemoAbstractFile implements AbstractFile {

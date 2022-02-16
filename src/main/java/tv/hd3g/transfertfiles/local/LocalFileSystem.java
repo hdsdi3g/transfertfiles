@@ -144,4 +144,18 @@ public class LocalFileSystem extends CommonAbstractFileSystem<LocalFile> {
 	public int reusableHashCode() {
 		return relativePath.hashCode();
 	}
+
+	@Override
+	public InetAddress getHost() {
+		try {
+			return InetAddress.getLocalHost();
+		} catch (final UnknownHostException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	@Override
+	public String getUsername() {
+		return System.getProperty("user.name");
+	}
 }

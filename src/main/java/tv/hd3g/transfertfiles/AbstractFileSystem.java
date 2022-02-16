@@ -20,6 +20,7 @@ import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.joining;
 
 import java.io.Closeable;
+import java.net.InetAddress;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -75,4 +76,9 @@ public interface AbstractFileSystem<T extends AbstractFile> extends Closeable {
 	 *         Can be used for interract two FS and protect the both are not the same.
 	 */
 	int reusableHashCode();
+
+	InetAddress getHost();
+
+	String getUsername();
+
 }

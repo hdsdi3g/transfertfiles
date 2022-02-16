@@ -75,7 +75,7 @@ public class AbstractFileSystemURL implements Closeable {
 		final var host = resolveHostname(url);
 		final var query = url.getOptionZone();
 		final var username = url.getUsername();
-		protectedRessourceURL = url.getProtectedRessourceURL();
+		protectedRessourceURL = url.getProtectedRessourceURL() + " [" + host.getHostAddress() + "]";
 		final var password = url.getPassword();
 		final var port = url.getPort();
 

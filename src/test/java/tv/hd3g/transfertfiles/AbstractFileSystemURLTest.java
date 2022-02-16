@@ -122,11 +122,11 @@ class AbstractFileSystemURLTest {
 
 	@Test
 	void testToString() {
-		assertEquals("ftpes://user:*******@localhost/basePath?password=secret1&active", afs.toString());
+		assertEquals("ftpes://user:*******@localhost/basePath?password=secret1&active [127.0.0.1]", afs.toString());
 		afs = new AbstractFileSystemURL("ftpes://user:sec:ret@localhost/?password=sec:ret");
-		assertEquals("ftpes://user:*******@localhost/?password=*******", afs.toString());
+		assertEquals("ftpes://user:*******@localhost/?password=******* [127.0.0.1]", afs.toString());
 		afs = new AbstractFileSystemURL("ftpes://user@localhost/?password=sec:ret");
-		assertEquals("ftpes://user@localhost/?password=*******", afs.toString());
+		assertEquals("ftpes://user@localhost/?password=******* [127.0.0.1]", afs.toString());
 	}
 
 	@Test

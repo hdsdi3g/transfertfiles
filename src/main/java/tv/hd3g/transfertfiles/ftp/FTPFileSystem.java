@@ -125,10 +125,12 @@ public class FTPFileSystem extends CommonAbstractFileSystem<FTPFile> {
 		}
 	}
 
+	@Override
 	public InetAddress getHost() {
 		return host;
 	}
 
+	@Override
 	public String getUsername() {
 		return username;
 	}

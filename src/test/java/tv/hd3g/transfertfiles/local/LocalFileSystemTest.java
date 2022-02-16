@@ -24,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.UncheckedIOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.file.InvalidPathException;
 
 import org.apache.commons.io.FileUtils;
@@ -131,6 +133,16 @@ class LocalFileSystemTest {
 		assertEquals(code0, lfs.reusableHashCode());
 
 		lfs.close();
+	}
+
+	@Test
+	void testGetHost() throws UnknownHostException {
+		assertEquals(InetAddress.getLocalHost(), fs.getHost());
+	}
+
+	@Test
+	void testGetUsername() {
+		assertEquals(System.getProperty("user.name"), fs.getUsername());
 	}
 
 }

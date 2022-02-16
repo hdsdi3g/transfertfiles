@@ -283,10 +283,12 @@ public class SFTPFileSystem extends CommonAbstractFileSystem<SFTPFile> {
 		return absoluteBasePath;
 	}
 
+	@Override
 	public InetAddress getHost() {
 		return host;
 	}
 
+	@Override
 	public String getUsername() {
 		return username;
 	}

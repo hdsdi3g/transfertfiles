@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -113,6 +114,16 @@ class CommonAbstractFileSystemTest {
 		@Override
 		public int reusableHashCode() {
 			return 0;
+		}
+
+		@Override
+		public InetAddress getHost() {
+			return null;
+		}
+
+		@Override
+		public String getUsername() {
+			return null;
 		}
 	}
 }
