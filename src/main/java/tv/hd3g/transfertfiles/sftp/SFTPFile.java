@@ -53,8 +53,6 @@ import tv.hd3g.transfertfiles.TransfertObserver;
 import tv.hd3g.transfertfiles.TransfertObserver.TransfertDirection;
 
 public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2160
-	private static final String NO_SUCH_FILE_OR_DIRECTORY = "No such file or directory";
-
 	private static final Logger log = LogManager.getLogger();
 
 	private final SFTPClient sftpClient;
@@ -72,6 +70,10 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		this.sftpClient = sftpClient;
 	}
 
+	private boolean isNoSuchFileInError(final IOException e) {
+		return e.getMessage().toUpperCase().startsWith("No such file".toUpperCase());
+	}
+
 	@Override
 	public AbstractFileSystem<?> getFileSystem() {
 		return fileSystem;
@@ -82,7 +84,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		try {
 			return sftpClient.size(sftpAbsolutePath);
 		} catch (final IOException e) {
-			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
+			if (isNoSuchFileInError(e)) {
 				return 0L;
 			}
 			throw new UncheckedIOException(e);
@@ -117,7 +119,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		try {
 			return sftpClient.stat(sftpAbsolutePath).getType() == Type.DIRECTORY;
 		} catch (final IOException e) {
-			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
+			if (isNoSuchFileInError(e)) {
 				return false;
 			}
 			throw new UncheckedIOException(e);
@@ -129,7 +131,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		try {
 			return sftpClient.stat(sftpAbsolutePath).getType() == Type.REGULAR;
 		} catch (final IOException e) {
-			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
+			if (isNoSuchFileInError(e)) {
 				return false;
 			}
 			throw new UncheckedIOException(e);
@@ -141,7 +143,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		try {
 			return sftpClient.stat(sftpAbsolutePath).getType() == Type.SYMLINK;
 		} catch (final IOException e) {
-			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
+			if (isNoSuchFileInError(e)) {
 				return false;
 			}
 			throw new UncheckedIOException(e);
@@ -156,7 +158,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			       && type != Type.DIRECTORY
 			       && type != Type.SYMLINK;
 		} catch (final IOException e) {
-			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
+			if (isNoSuchFileInError(e)) {
 				return false;
 			}
 			throw new UncheckedIOException(e);
@@ -168,7 +170,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		try {
 			return sftpClient.stat(sftpAbsolutePath).getMtime() * 1000L;
 		} catch (final IOException e) {
-			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
+			if (isNoSuchFileInError(e)) {
 				return 0;
 			}
 			throw new UncheckedIOException(e);
@@ -189,7 +191,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 		try {
 			return makeCachedFileAttributesFromStat(this, sftpClient.stat(sftpAbsolutePath));
 		} catch (final IOException e) {
-			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)) {
+			if (isNoSuchFileInError(e)) {
 				return CachedFileAttributes.notExists(this);
 			}
 			throw new UncheckedIOException(e);
@@ -212,8 +214,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			        .map(toRelativePath)
 			        .map(fileSystem::getFromPath);
 		} catch (final IOException e) {
-			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)
-			    || e.getMessage().equals("Accessed location is not a directory")) {
+			if (isNoSuchFileInError(e) || e.getMessage().equals("Accessed location is not a directory")) {
 				return Stream.empty();
 			}
 			throw new UncheckedIOException(e);
@@ -227,8 +228,7 @@ public class SFTPFile extends CommonAbstractFile<SFTPFileSystem> { // NOSONAR S2
 			        .map(rri -> makeCachedFileAttributesFromStat(
 			                fileSystem.getFromPath(toRelativePath.apply(rri.getPath())), rri.getAttributes()));
 		} catch (final IOException e) {
-			if (e.getMessage().equals(NO_SUCH_FILE_OR_DIRECTORY)
-			    || e.getMessage().equals("Accessed location is not a directory")) {
+			if (isNoSuchFileInError(e) || e.getMessage().equals("Accessed location is not a directory")) {
 				return Stream.empty();
 			}
 			throw new UncheckedIOException(e);
